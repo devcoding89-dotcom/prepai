@@ -1,7 +1,7 @@
 import "server-only";
 import { repo } from "@/lib/db";
 import { analyseSession, persistWeaknesses, type SessionAnalysis } from "@/lib/engine";
-import type { Difficulty, Exam, PracticeSession, Question } from "@/lib/types";
+import { EXAMS, type Difficulty, type Exam, type PracticeSession, type Question } from "@/lib/types";
 
 export const MODES = {
   quick: { label: "Quick drill", count: 10, secondsPerQuestion: 60 },
@@ -25,11 +25,19 @@ export interface StartInput {
   count?: number;
   difficulty?: Difficulty;
   durationSeconds?: number;
+  shuffle?: boolean;
 }
 
 export async function startSession(input: StartInput): Promise<
   { ok: true; session: PracticeSession } | { ok: false; error: string }
 > {
+  if (!EXAMS.includes(input.exam)) return { ok: false, error: "Choose a valid exam." };
+  if (!Object.prototype.hasOwnProperty.call(MODES, input.mode)) {
+    return { ok: false, error: "Choose a valid practice mode." };
+  }
+  if (input.count != null && (!Number.isInteger(input.count) || input.count < 1 || input.count > 500)) {
+    return { ok: false, error: "Question count must be between 1 and 500." };
+  }
   const modeCfg = MODES[input.mode];
   let count = input.count ?? modeCfg.count;
   let duration = input.durationSeconds ?? count * modeCfg.secondsPerQuestion;
@@ -46,6 +54,7 @@ export async function startSession(input: StartInput): Promise<
     topics: input.topics?.length ? input.topics : undefined,
     count,
     difficulty: input.difficulty,
+    shuffle: input.shuffle,
   });
 
   if (questions.length === 0) {

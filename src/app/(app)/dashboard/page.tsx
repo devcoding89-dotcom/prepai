@@ -4,6 +4,7 @@ import {
   AlertTriangle,
   ArrowRight,
   BookOpen,
+  CalendarClock,
   ClipboardList,
   Flame,
   Sparkles,
@@ -24,13 +25,17 @@ export const dynamic = "force-dynamic";
 export default async function DashboardPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/auth/login");
-  if (!user.target_exam) redirect("/onboarding");
 
   const { stats, sessions, plan } = await getDashboardData(user.id);
   const subscribed = await canAccessPaidFeatures(user);
   const firstName = user.full_name?.split(" ")[0] ?? "there";
   const completed = sessions.filter((s) => s.status === "completed");
   const inProgress = sessions.find((s) => s.status === "in_progress");
+
+  // Exam countdown — days until the student's exam date (if set and in the future).
+  const daysToExam = user.exam_date
+    ? Math.ceil((new Date(`${user.exam_date}T00:00:00`).getTime() - Date.now()) / 86_400_000)
+    : null;
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
@@ -54,6 +59,35 @@ export default async function DashboardPage() {
           Start new practice
         </LinkButton>
       </div>
+
+      {daysToExam != null && daysToExam >= 0 && (
+        <Card className="overflow-hidden border-brand-200">
+          <CardBody className="flex flex-wrap items-center justify-between gap-4 pt-5">
+            <div className="flex items-center gap-4">
+              <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-brand-50 text-brand-600">
+                <CalendarClock className="size-6" />
+              </span>
+              <div>
+                <p className="text-lg font-extrabold tracking-tight text-ink-950">
+                  {daysToExam === 0
+                    ? `Your ${user.target_exam} exam is today — good luck! 🍀`
+                    : `${daysToExam} day${daysToExam === 1 ? "" : "s"} until your ${user.target_exam} exam`}
+                </p>
+                <p className="text-xs text-ink-500">
+                  {daysToExam <= 7
+                    ? "Final stretch: short daily drills beat one long cram session."
+                    : daysToExam <= 30
+                      ? "Focus on your weakest topics below — every point counts now."
+                      : "Steady practice now makes the last month calm instead of chaotic."}
+                </p>
+              </div>
+            </div>
+            <Link href="/practice" className={buttonClass("primary", "sm")}>
+              Practise now
+            </Link>
+          </CardBody>
+        </Card>
+      )}
 
       {inProgress && (
         <Card className="border-amber-300 bg-amber-50/70">

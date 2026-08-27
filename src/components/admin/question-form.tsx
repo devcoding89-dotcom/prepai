@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 import Link from "next/link";
-import { Save } from "lucide-react";
+import { Loader2, Save, Sparkles } from "lucide-react";
 import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, Checkbox, Field, Input, Select, Textarea } from "@/components/ui/input";
 import { Button, buttonClass } from "@/components/ui/button";
@@ -16,8 +16,43 @@ export function QuestionForm({ question }: { question?: Question }) {
     {} as AdminState,
   );
   const [exam, setExam] = useState<Exam>(question?.exam ?? "JAMB");
+  const [subject, setSubject] = useState(question?.subject ?? "");
+  const [topic, setTopic] = useState(question?.topic ?? "");
+  const [difficulty, setDifficulty] = useState(question?.difficulty ?? "medium");
   const [answer, setAnswer] = useState(question?.correct_answer ?? "A");
   const [optionCount, setOptionCount] = useState(question?.options.length ?? 4);
+  const [questionText, setQuestionText] = useState(question?.question_text ?? "");
+  const [options, setOptions] = useState(question?.options ?? ["", "", "", ""]);
+  const [explanation, setExplanation] = useState(question?.explanation ?? "");
+  const [generating, setGenerating] = useState(false);
+  const [generationError, setGenerationError] = useState<string | null>(null);
+
+  async function generateQuestion() {
+    if (!subject || !topic) {
+      setGenerationError("Enter a subject and topic before generating.");
+      return;
+    }
+    setGenerating(true);
+    setGenerationError(null);
+    try {
+      const response = await fetch("/api/admin/questions/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ exam, subject, topic, difficulty }),
+      });
+      const data = (await response.json()) as { question?: { question_text: string; options: string[]; correct_answer: string; explanation: string }; error?: string };
+      if (!response.ok || !data.question) throw new Error(data.error || "Could not generate a question.");
+      setQuestionText(data.question.question_text);
+      setOptions(data.question.options);
+      setOptionCount(data.question.options.length);
+      setAnswer(data.question.correct_answer);
+      setExplanation(data.question.explanation);
+    } catch (cause) {
+      setGenerationError(cause instanceof Error ? cause.message : "Could not generate a question.");
+    } finally {
+      setGenerating(false);
+    }
+  }
 
   return (
     <form action={action} className="grid gap-5 lg:grid-cols-[1.6fr_1fr] lg:items-start">
@@ -37,7 +72,8 @@ export function QuestionForm({ question }: { question?: Question }) {
                 id="question_text"
                 name="question_text"
                 required
-                defaultValue={question?.question_text}
+                value={questionText}
+                onChange={(event) => setQuestionText(event.target.value)}
                 placeholder="e.g. Solve for x: x² − 5x + 6 = 0"
                 className="min-h-28"
               />
@@ -66,7 +102,8 @@ export function QuestionForm({ question }: { question?: Question }) {
                     </button>
                     <Input
                       name={`option_${i + 1}`}
-                      defaultValue={question?.options[i] ?? ""}
+                      value={options[i] ?? ""}
+                      onChange={(event) => setOptions((current) => current.map((option, index) => (index === i ? event.target.value : option)))}
                       placeholder={`Option ${letter}`}
                       required={i < 2}
                       className="border-0 focus:ring-0"
@@ -77,12 +114,26 @@ export function QuestionForm({ question }: { question?: Question }) {
               <input type="hidden" name="correct_answer" value={answer} />
               <div className="mt-2 flex gap-2">
                 {optionCount < 5 && (
-                  <button type="button" onClick={() => setOptionCount((c) => c + 1)} className="text-[12px] font-semibold text-brand-700 hover:underline">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOptions((current) => [...current, ""]);
+                      setOptionCount((c) => c + 1);
+                    }}
+                    className="text-[12px] font-semibold text-brand-700 hover:underline"
+                  >
                     + Add option
                   </button>
                 )}
                 {optionCount > 2 && (
-                  <button type="button" onClick={() => setOptionCount((c) => c - 1)} className="text-[12px] font-semibold text-ink-400 hover:underline">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOptions((current) => current.slice(0, -1));
+                      setOptionCount((c) => c - 1);
+                    }}
+                    className="text-[12px] font-semibold text-ink-400 hover:underline"
+                  >
                     − Remove last
                   </button>
                 )}
@@ -93,7 +144,8 @@ export function QuestionForm({ question }: { question?: Question }) {
               <Textarea
                 id="explanation"
                 name="explanation"
-                defaultValue={question?.explanation ?? ""}
+                value={explanation}
+                onChange={(event) => setExplanation(event.target.value)}
                 placeholder="Factorising gives (x − 2)(x − 3) = 0, so x = 2 or 3."
               />
             </Field>
@@ -106,6 +158,21 @@ export function QuestionForm({ question }: { question?: Question }) {
           <CardTitle>Classification</CardTitle>
         </CardHeader>
         <CardBody className="space-y-4">
+          <div className="rounded-xl border border-brand-200 bg-brand-50/70 p-3.5">
+            <div className="flex items-start gap-2.5">
+              <Sparkles className="mt-0.5 size-4 shrink-0 text-brand-600" />
+              <div>
+                <p className="text-sm font-bold text-brand-900">AI-generated question</p>
+                <p className="mt-0.5 text-xs leading-relaxed text-brand-800">Uses the selected exam, subject and topic. Review it before saving.</p>
+              </div>
+            </div>
+            <Button type="button" variant="secondary" onClick={generateQuestion} disabled={generating} className="mt-3 w-full">
+              {generating ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
+              {generating ? "Generating..." : "Generate with AI"}
+            </Button>
+            {generationError && <p className="mt-2 text-xs font-medium text-rose-700">{generationError}</p>}
+          </div>
+
           <Field label="Exam" htmlFor="exam">
             <Select id="exam" name="exam" value={exam} onChange={(e) => setExam(e.target.value as Exam)}>
               {EXAMS.map((e) => (
@@ -122,7 +189,8 @@ export function QuestionForm({ question }: { question?: Question }) {
               name="subject"
               required
               list="subject-options"
-              defaultValue={question?.subject}
+                      value={subject}
+                      onChange={(event) => setSubject(event.target.value)}
               placeholder="Mathematics"
             />
             <datalist id="subject-options">
@@ -133,12 +201,12 @@ export function QuestionForm({ question }: { question?: Question }) {
           </Field>
 
           <Field label="Topic" htmlFor="topic" hint="Used by the AI report and textbook matching — keep it consistent.">
-            <Input id="topic" name="topic" required defaultValue={question?.topic} placeholder="Quadratic Equations" />
+            <Input id="topic" name="topic" required value={topic} onChange={(event) => setTopic(event.target.value)} placeholder="Quadratic Equations" />
           </Field>
 
           <div className="grid grid-cols-2 gap-3">
             <Field label="Difficulty" htmlFor="difficulty">
-              <Select id="difficulty" name="difficulty" defaultValue={question?.difficulty ?? "medium"}>
+              <Select id="difficulty" name="difficulty" value={difficulty} onChange={(event) => setDifficulty(event.target.value as typeof difficulty)}>
                 <option value="easy">Easy</option>
                 <option value="medium">Medium</option>
                 <option value="hard">Hard</option>

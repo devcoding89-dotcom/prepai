@@ -4,14 +4,15 @@ export type Incoming = Partial<Record<string, unknown>>;
 
 const LETTERS = ["A", "B", "C", "D", "E"];
 
-export function normaliseRow(raw: Incoming): { ok: true; row: Omit<Question, "id" | "created_at"> } | { ok: false; error: string } {
+export function normaliseRow(raw: Incoming, fallbackExam?: Exam): { ok: true; row: Omit<Question, "id" | "created_at"> } | { ok: false; error: string } {
   const get = (k: string) => {
     const v = raw[k];
     return v == null ? "" : String(v).trim();
   };
 
-  const exam = get("exam").toUpperCase() as Exam;
-  if (!EXAMS.includes(exam)) return { ok: false, error: `Invalid exam "${get("exam")}" (use JAMB, WAEC or NECO)` };
+  const rawExam = get("exam").toUpperCase();
+  const exam = (rawExam === "AI GENERATED" && fallbackExam ? fallbackExam : rawExam) as Exam;
+  if (!EXAMS.includes(exam)) return { ok: false, error: `Invalid exam "${get("exam")}" (use JAMB, WAEC, NECO or AI GENERATED)` };
 
   let options: string[] = [];
   const rawOptions = raw["options"];

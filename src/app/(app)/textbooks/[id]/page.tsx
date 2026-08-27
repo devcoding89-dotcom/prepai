@@ -118,14 +118,23 @@ export default async function ReaderPage({
           <CardBody className="pt-6">
             {chapter.file_path ? (
               <div className="space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3">
+                  <div>
+                    <p className="text-sm font-bold text-brand-900">{chapter.title}</p>
+                    <p className="mt-0.5 text-xs text-brand-700">Document loaded from the textbook library.</p>
+                  </div>
+                  <a href={chapter.file_path} target="_blank" rel="noreferrer" className={buttonClass("primary", "sm")}>
+                    Open document
+                  </a>
+                </div>
                 <iframe
                   src={chapter.file_path}
                   title={chapter.title}
                   className="h-[75vh] w-full rounded-xl border border-ink-200"
                 />
-                <a href={chapter.file_path} target="_blank" rel="noreferrer" className={buttonClass("outline", "sm")}>
-                  Open file in new tab
-                </a>
+                <p className="text-xs text-ink-500">
+                  If the document area is blank, select <strong>Open document</strong> to view the PDF in a new browser tab.
+                </p>
               </div>
             ) : chapter.content_html ? (
               <article className="reader" dangerouslySetInnerHTML={{ __html: chapter.content_html }} />

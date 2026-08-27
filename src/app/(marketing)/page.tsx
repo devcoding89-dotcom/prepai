@@ -63,6 +63,19 @@ const examCards = [
     ],
     blurb: "Same engine, same reports — tuned to the NECO syllabus and question style.",
   },
+  {
+    exam: "AI GENERATED",
+    name: "AI-generated questions",
+    accent: "from-violet-500 to-violet-700",
+    ring: "hover:border-violet-400",
+    tint: "bg-violet-50 text-violet-700",
+    rows: [
+      { icon: "✨", label: "Paste questions in bulk" },
+      { icon: "🎯", label: "Assign JAMB, WAEC or NECO" },
+      { icon: "✅", label: "Review before importing" },
+    ],
+    blurb: "Paste AI-created questions, assign the exam and add them to your practice bank.",
+  },
 ];
 
 const features = [
@@ -140,12 +153,12 @@ export default async function LandingPage() {
   // Signed-in visitors should never be bounced through signup again.
   const startHref = signedIn ? "/practice" : "/auth/signup";
   const examHref = (exam: string) =>
-    signedIn ? `/practice?exam=${exam}` : `/auth/signup?exam=${exam}`;
+    signedIn ? `/practice?exam=${encodeURIComponent(exam)}` : `/auth/signup?exam=${encodeURIComponent(exam)}`;
 
   const [settings, counts, questionTotal] = await Promise.all([
-    repo.getSettings(),
-    repo.questionCountsBySubject("ALL"),
-    repo.listQuestions({ limit: 1 }).then((r) => r.total),
+    repo.getSettings().catch(() => ({ price_kobo: 100000 })),
+    repo.questionCountsBySubject("ALL").catch(() => []),
+    repo.listQuestions({ limit: 1 }).then((r) => r.total).catch(() => 0),
   ]);
   const subjectCount = counts.length;
   const price = formatNaira(settings.price_kobo);
@@ -244,7 +257,7 @@ export default async function LandingPage() {
             title="Which exam are you preparing for?"
             sub="Pick one to focus on. You can switch any time — your history follows you."
           />
-          <div className="mt-10 grid gap-5 md:grid-cols-3">
+          <div className="mt-10 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
             {examCards.map((c) => (
               <Link
                 key={c.exam}
@@ -269,7 +282,7 @@ export default async function LandingPage() {
                   ))}
                 </ul>
                 <span className={buttonClass("outline", "md", "mt-6 w-full group-hover:border-brand-400 group-hover:bg-brand-50 group-hover:text-brand-700")}>
-                  Practice {c.exam}
+                  {c.exam === "AI GENERATED" ? "Paste AI questions" : `Practice ${c.exam}`}
                   <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
                 </span>
               </Link>

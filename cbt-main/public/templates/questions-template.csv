@@ -1,4 +1,0 @@
-exam,subject,topic,question_text,option_a,option_b,option_c,option_d,correct_answer,explanation,difficulty,year
-JAMB,Mathematics,Quadratic Equations,"Solve for x: x² - 5x + 6 = 0","x = 2 or 3","x = -2 or -3","x = 1 or 6","x = -1 or -6",A,"Factorising: (x-2)(x-3) = 0",medium,2023
-JAMB,Physics,Waves,"A wave of frequency 50 Hz has wavelength 4 m. Its speed is","200 m/s","12.5 m/s","54 m/s","0.08 m/s",A,"v = f x lambda",easy,2021
-WAEC,English Language,Concord,"Each of the boys ___ a book.","have","has","are having","were having",B,"'Each' is singular.",easy,2021

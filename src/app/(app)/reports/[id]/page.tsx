@@ -16,6 +16,8 @@ import { getCurrentUser } from "@/lib/auth";
 import { repo } from "@/lib/db";
 import { analyseSession } from "@/lib/engine";
 import { loadSessionQuestions } from "@/lib/services/practice";
+import { retryMistakesAction } from "@/app/(app)/practice/actions";
+import { ExplainAnswer } from "@/components/app/explain-answer";
 import { Badge, Card, CardBody, CardHeader, CardTitle, ProgressBar } from "@/components/ui/card";
 import { LinkButton, buttonClass } from "@/components/ui/button";
 import { SubjectBarChart } from "@/components/app/charts";
@@ -284,6 +286,7 @@ export default async function ReportPage({ params }: { params: Promise<{ id: str
                       <p className="mt-1 text-[14px] leading-relaxed text-brand-900">{q.explanation}</p>
                     </div>
                   )}
+                  {!correct && <ExplainAnswer questionId={q.id} />}
                 </div>
               </details>
             );
@@ -292,6 +295,15 @@ export default async function ReportPage({ params }: { params: Promise<{ id: str
       </Card>
 
       <div className="flex flex-wrap gap-3 pb-4">
+        {analysis.wrong + analysis.unanswered > 0 && (
+          <form action={retryMistakesAction}>
+            <input type="hidden" name="session_id" value={session.id} />
+            <button type="submit" className={buttonClass("primary", "md")}>
+              <RefreshCw className="size-4" />
+              Retry my {analysis.wrong + analysis.unanswered} mistake{analysis.wrong + analysis.unanswered === 1 ? "" : "s"}
+            </button>
+          </form>
+        )}
         <LinkButton href="/practice">
           Practise again
           <ArrowRight className="size-4" />

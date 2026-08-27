@@ -97,12 +97,35 @@ Deploy. Every future `git push` redeploys automatically.
 
 > **Important for production:** the built-in JSON database writes to disk, which
 > Vercel wipes on each deploy. Before taking real payments, create a Supabase
-> project, run `supabase/migrations/0001_init.sql`, and add
-> `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` and
-> `SUPABASE_SERVICE_ROLE_KEY` — the app switches drivers on its own. Then add
-> `PAYSTACK_SECRET_KEY` and point the Paystack webhook at
+> project and add the connection variables below — the app switches drivers on
+> its own. Then add `PAYSTACK_SECRET_KEY` and point the Paystack webhook at
 > `https://yourdomain.com/api/webhooks/paystack`. Full walkthrough in README
 > section 4.
+
+### Supabase variables — set ALL of these on Vercel
+
+Pick one install mode and use the matching schema variable.
+
+**Isolated `prepai` schema (migration `0002_isolated_schema.sql`) — use when the
+project is shared with another app (the common case):**
+
+| Variable | Value |
+| --- | --- |
+| `NEXT_PUBLIC_SUPABASE_URL` | `https://xxxx.supabase.co` |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | your anon key |
+| `SUPABASE_SERVICE_ROLE_KEY` | your service-role key |
+| `SUPABASE_DB_SCHEMA` | `prepai` |
+| `SUPABASE_STORAGE_BUCKET` | `textbooks` |
+
+> **This is the #1 cause of a blank "Something went wrong" page on Vercel:**
+> `SUPABASE_DB_SCHEMA=prepai` is set in `.env.local` but not added to the Vercel
+> dashboard, so the app queries the (empty) `public` schema and every lookup
+> 404s. Add it to Settings → Environment Variables and redeploy.
+
+**Plain `public` schema (migration `0001_init.sql`) — use for a clean,
+single-app project:**
+set `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` and
+`SUPABASE_SERVICE_ROLE_KEY` (do **not** set `SUPABASE_DB_SCHEMA`).
 
 ---
 

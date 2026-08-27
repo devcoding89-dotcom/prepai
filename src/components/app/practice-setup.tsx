@@ -16,7 +16,7 @@ interface Props {
   subjectCounts: { subject: string; count: number }[];
   presetSubject?: string;
   presetTopic?: string;
-  topics: string[];
+  topicsBySubject: Record<string, string[]>;
   subscribed: boolean;
 }
 
@@ -26,14 +26,16 @@ const modes = [
   { id: "mock", label: "Full mock", count: 0, desc: "Full length · real timing", icon: GraduationCap },
 ] as const;
 
-export function PracticeSetup({ exam, subjectCounts, presetSubject, presetTopic, topics, subscribed }: Props) {
+export function PracticeSetup({ exam, subjectCounts, presetSubject, presetTopic, topicsBySubject, subscribed }: Props) {
   const [state, action, pending] = useActionState(startPracticeAction, initial);
   const [selected, setSelected] = useState<string[]>(
-    presetSubject ? [presetSubject] : subjectCounts.slice(0, 1).map((s) => s.subject),
+    presetSubject ? [presetSubject] : subjectCounts.find((s) => s.count > 0)?.subject ? [subjectCounts.find((s) => s.count > 0)!.subject] : [],
   );
   const [mode, setMode] = useState<(typeof modes)[number]["id"]>(presetTopic ? "quick" : "quick");
   const [difficulty, setDifficulty] = useState("");
   const [topic, setTopic] = useState(presetTopic ?? "");
+  const [shuffle, setShuffle] = useState<"yes" | "no">("yes");
+  const topics = [...new Set(selected.flatMap((subject) => topicsBySubject[subject] ?? []))].sort();
 
   const mockCount = exam === "JAMB" ? 180 : 100;
   const available = useMemo(
@@ -52,6 +54,7 @@ export function PracticeSetup({ exam, subjectCounts, presetSubject, presetTopic,
     <form action={action} className="grid gap-6 lg:grid-cols-[1.4fr_1fr] lg:items-start">
       <input type="hidden" name="exam" value={exam} />
       {topic && <input type="hidden" name="topics" value={topic} />}
+      <input type="hidden" name="shuffle" value={shuffle} />
 
       <div className="space-y-6">
         {state.error && <Alert>{state.error}</Alert>}
@@ -66,7 +69,7 @@ export function PracticeSetup({ exam, subjectCounts, presetSubject, presetTopic,
             <div className="flex gap-2">
               <button
                 type="button"
-                onClick={() => setSelected(subjectCounts.map((s) => s.subject))}
+                onClick={() => setSelected(subjectCounts.filter((s) => s.count > 0).map((s) => s.subject))}
                 className="text-[12px] font-semibold text-brand-700 hover:underline"
               >
                 Select all
@@ -93,12 +96,12 @@ export function PracticeSetup({ exam, subjectCounts, presetSubject, presetTopic,
                     <label
                       key={s.subject}
                       className={cn(
-                        "flex cursor-pointer items-center gap-3 rounded-xl border px-3.5 py-3 transition-colors",
-                        on ? "border-brand-500 bg-brand-50/60" : "border-ink-200 hover:border-ink-300",
+                        "flex items-center gap-3 rounded-xl border px-3.5 py-3 transition-colors",
+                        s.count === 0 ? "cursor-not-allowed border-ink-100 bg-ink-50/60 opacity-60" : on ? "cursor-pointer border-brand-500 bg-brand-50/60" : "cursor-pointer border-ink-200 hover:border-ink-300",
                       )}
                     >
-                      <Checkbox checked={on} onChange={() => toggle(s.subject)} readOnly />
-                      {on && <input type="hidden" name="subjects" value={s.subject} />}
+                      <Checkbox checked={on} onChange={() => toggle(s.subject)} disabled={s.count === 0} readOnly />
+                      {on && s.count > 0 && <input type="hidden" name="subjects" value={s.subject} />}
                       <span className="flex-1 text-sm font-medium text-ink-800">{s.subject}</span>
                       <span className="text-[11px] font-semibold text-ink-400">{s.count}q</span>
                     </label>
@@ -137,6 +140,28 @@ export function PracticeSetup({ exam, subjectCounts, presetSubject, presetTopic,
               );
             })}
             <input type="hidden" name="mode" value={mode} />
+          </CardBody>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Shuffle questions?</CardTitle>
+            <p className="mt-1 text-sm text-ink-500">Choose whether questions appear in a random order.</p>
+          </CardHeader>
+          <CardBody className="grid grid-cols-2 gap-3">
+            {(["yes", "no"] as const).map((option) => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => setShuffle(option)}
+                className={cn(
+                  "rounded-xl border px-4 py-3 text-left text-sm font-bold capitalize transition-colors",
+                  shuffle === option ? "border-brand-500 bg-brand-50 text-brand-700" : "border-ink-200 text-ink-600 hover:border-ink-300",
+                )}
+              >
+                {option}
+              </button>
+            ))}
           </CardBody>
         </Card>
 

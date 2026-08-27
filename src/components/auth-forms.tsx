@@ -28,7 +28,7 @@ function PasswordInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
   );
 }
 
-export function LoginForm({ next }: { next?: string }) {
+export function LoginForm({ next, adminLogin = false, hideSignup = false }: { next?: string; adminLogin?: boolean; hideSignup?: boolean }) {
   const [state, action, pending] = useActionState(loginAction, initial);
   return (
     <form action={action} className="animate-fade-up space-y-5">
@@ -40,8 +40,17 @@ export function LoginForm({ next }: { next?: string }) {
       {state.error && <Alert>{state.error}</Alert>}
       <input type="hidden" name="next" value={next ?? ""} />
 
-      <Field label="Email address" htmlFor="email">
-        <Input id="email" name="email" type="email" autoComplete="email" required placeholder="you@example.com" />
+      <input type="hidden" name="admin_login" value={adminLogin ? "1" : ""} />
+
+      <Field label={adminLogin ? "Admin username or email" : "Email address"} htmlFor="email">
+        <Input
+          id="email"
+          name="email"
+          type={adminLogin ? "text" : "email"}
+          autoComplete="username"
+          required
+          placeholder={adminLogin ? "khaleed or admin@example.com" : "you@example.com"}
+        />
       </Field>
 
       <Field label="Password" htmlFor="password">
@@ -52,12 +61,14 @@ export function LoginForm({ next }: { next?: string }) {
         Log in
       </Button>
 
-      <p className="text-center text-sm text-ink-500">
-        Don&apos;t have an account?{" "}
-        <Link href="/auth/signup" className="font-semibold text-brand-700 hover:underline">
-          Sign up
-        </Link>
-      </p>
+      {!hideSignup && (
+        <p className="text-center text-sm text-ink-500">
+          Don&apos;t have an account?{" "}
+          <Link href="/auth/signup" className="font-semibold text-brand-700 hover:underline">
+            Sign up
+          </Link>
+        </p>
+      )}
 
     </form>
   );

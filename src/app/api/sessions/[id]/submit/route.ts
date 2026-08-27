@@ -20,16 +20,20 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   const body = (await req.json().catch(() => ({}))) as {
     answers?: { question_id: string; selected: string | null; flagged?: boolean; time_ms?: number }[];
   };
-  for (const a of body.answers ?? []) {
-    if (!session.question_ids.includes(a.question_id)) continue;
-    await recordAnswer({
-      sessionId: session.id,
-      questionId: a.question_id,
-      selected: a.selected ?? null,
-      flagged: Boolean(a.flagged),
-      timeMs: Math.max(0, Math.round(a.time_ms ?? 0)),
-    });
-  }
+  const answerWrites = (body.answers ?? [])
+    .filter((a) => session.question_ids.includes(a.question_id))
+    .filter((a) => a.selected === null || typeof a.selected === "string")
+    .filter((a) => a.time_ms == null || (Number.isFinite(a.time_ms) && a.time_ms >= 0 && a.time_ms <= 86_400_000))
+    .map((a) =>
+      recordAnswer({
+        sessionId: session.id,
+        questionId: a.question_id,
+        selected: a.selected ?? null,
+        flagged: Boolean(a.flagged),
+        timeMs: Math.max(0, Math.round(a.time_ms ?? 0)),
+      }),
+    );
+  await Promise.all(answerWrites);
 
   const { analysis } = await submitSession(session);
 

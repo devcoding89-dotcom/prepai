@@ -54,6 +54,12 @@ export function MarketingNav({ signedIn }: { signedIn: boolean }) {
               {l.label}
             </Link>
           ))}
+          <Link
+            href="/admin-login"
+            className="rounded-lg px-3.5 py-2 text-sm font-medium text-ink-500 transition-colors hover:bg-ink-100 hover:text-ink-950"
+          >
+            Admin
+          </Link>
         </div>
 
         <div className="hidden items-center gap-2 md:flex">
@@ -96,6 +102,13 @@ export function MarketingNav({ signedIn }: { signedIn: boolean }) {
                 {l.label}
               </Link>
             ))}
+            <Link
+              href="/admin-login"
+              onClick={() => setOpen(false)}
+              className="rounded-xl px-3 py-3 text-[15px] font-medium text-ink-800 hover:bg-ink-100"
+            >
+              Admin
+            </Link>
             <div className="mt-3 flex flex-col gap-2">
               {signedIn ? (
                 <Link href="/dashboard" className={buttonClass("primary", "md", "w-full")}>

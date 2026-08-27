@@ -145,7 +145,8 @@ export const supabaseRepo: Repo = {
     const pool = (unwrap(res, "pickQuestions") ?? []) as Question[];
     // even spread across subjects, then shuffle
     const bySubject = new Map<string, Question[]>();
-    for (const item of pool.sort(() => Math.random() - 0.5)) {
+    const orderedPool = spec.shuffle === false ? pool : pool.sort(() => Math.random() - 0.5);
+    for (const item of orderedPool) {
       const arr = bySubject.get(item.subject) ?? [];
       arr.push(item);
       bySubject.set(item.subject, arr);
@@ -163,7 +164,7 @@ export const supabaseRepo: Repo = {
         }
       }
     }
-    return out.sort(() => Math.random() - 0.5);
+    return spec.shuffle === false ? out : out.sort(() => Math.random() - 0.5);
   },
   async questionFacets(exam) {
     let q = admin().from(T("questions")).select("subject,topic");

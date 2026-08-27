@@ -2,8 +2,8 @@
 // PrepAI — shared domain types
 // ---------------------------------------------------------------------------
 
-export type Exam = "JAMB" | "WAEC" | "NECO";
-export const EXAMS: Exam[] = ["JAMB", "WAEC", "NECO"];
+export type Exam = "JAMB" | "WAEC" | "NECO" | "AI GENERATED";
+export const EXAMS: Exam[] = ["JAMB", "WAEC", "NECO", "AI GENERATED"];
 
 export type Difficulty = "easy" | "medium" | "hard";
 export type Role = "student" | "admin";
@@ -17,6 +17,8 @@ export interface Profile {
   full_name: string | null;
   role: Role;
   target_exam: Exam | null;
+  /** When the student sits their exam (ISO date) — powers the dashboard countdown. */
+  exam_date: string | null;
   avatar_url: string | null;
   subscription_status: SubscriptionStatus;
   subscription_expires_at: string | null;
@@ -202,6 +204,16 @@ export const SUBJECTS_BY_EXAM: Record<Exam, string[]> = {
     "Further Mathematics",
     "Civic Education",
     "Financial Accounting",
+  ],
+  "AI GENERATED": [
+    "Mathematics",
+    "English Language",
+    "Physics",
+    "Chemistry",
+    "Biology",
+    "Economics",
+    "Government",
+    "General Knowledge",
   ],
 };
 

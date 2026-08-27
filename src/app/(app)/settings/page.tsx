@@ -19,9 +19,12 @@ async function saveProfile(formData: FormData) {
   if (!user) redirect("/auth/login");
   const full_name = String(formData.get("full_name") ?? "").trim();
   const exam = String(formData.get("target_exam") ?? "") as Exam;
+  const examDateRaw = String(formData.get("exam_date") ?? "").trim();
+  const examDate = /^\d{4}-\d{2}-\d{2}$/.test(examDateRaw) ? examDateRaw : null;
   await repo.updateProfile(user.id, {
     full_name: full_name || user.full_name,
     target_exam: EXAMS.includes(exam) ? exam : user.target_exam,
+    exam_date: examDate,
   });
   revalidatePath("/settings");
   redirect("/settings?saved=1");
@@ -70,6 +73,18 @@ export default async function SettingsPage({
                   </option>
                 ))}
               </Select>
+            </Field>
+            <Field
+              label="Exam date"
+              htmlFor="exam_date"
+              hint="Optional — shows a countdown on your dashboard so you know exactly how long you have."
+            >
+              <Input
+                id="exam_date"
+                name="exam_date"
+                type="date"
+                defaultValue={user.exam_date ? user.exam_date.slice(0, 10) : ""}
+              />
             </Field>
             <Button type="submit">Save changes</Button>
           </form>

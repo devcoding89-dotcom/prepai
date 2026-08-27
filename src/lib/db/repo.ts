@@ -30,6 +30,7 @@ export interface PickSpec {
   topics?: string[];
   count: number;
   difficulty?: Difficulty;
+  shuffle?: boolean;
 }
 
 export interface TextbookFilter {

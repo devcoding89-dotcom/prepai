@@ -81,4 +81,13 @@ if (missing) {
     .eq("role", "admin");
   console.log(`\n✅ Schema is ready. Admin accounts: ${count ?? 0}`);
   if (!count) console.log("➜ Create one: node scripts/bootstrap-admin.mjs you@example.com 'Password123' 'Your Name'");
+
+  const bucket = await supabase.storage.getBucket("textbooks");
+  if (bucket.error) {
+    console.log(`✖ textbooks storage bucket: ${bucket.error.message}`);
+    console.log("➜ Run supabase/migrations/0004_fix_textbook_storage.sql in the Supabase SQL editor.");
+  } else {
+    console.log(`✅ textbooks storage bucket: ${bucket.data.public ? "public" : "private"}`);
+    if (!bucket.data.public) console.log("➜ Run supabase/migrations/0004_fix_textbook_storage.sql to enable public file viewing.");
+  }
 }

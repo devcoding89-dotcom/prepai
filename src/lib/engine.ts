@@ -165,7 +165,6 @@ export async function analyseSession(
     const avgSeconds = b.seconds.length ? Math.round(b.seconds.reduce((s, x) => s + x, 0) / b.seconds.length) : 0;
     const pace: TopicAnalysis["pace"] =
       avgAll === 0 || avgSeconds === 0 ? "steady" : avgSeconds < avgAll * 0.6 ? "rushed" : avgSeconds > avgAll * 1.6 ? "slow" : "steady";
-    const textbook = await repo.findTextbookForTopic(session.exam, b.subject, b.topic);
     topics.push({
       exam: session.exam,
       subject: b.subject,
@@ -189,9 +188,16 @@ export async function analyseSession(
         missed_easy: b.missed_easy,
         total: b.total,
       }),
-      textbook_id: textbook?.id ?? null,
+      textbook_id: null,
     });
   }
+
+  const textbookMatches = await Promise.all(
+    topics.map((topic) => repo.findTextbookForTopic(session.exam, topic.subject, topic.topic)),
+  );
+  topics.forEach((topic, index) => {
+    topic.textbook_id = textbookMatches[index]?.id ?? null;
+  });
 
   topics.sort((a, b) => b.weakness_score - a.weakness_score || b.total - a.total);
 

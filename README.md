@@ -90,11 +90,33 @@ database.
 
 ### 4.1 Supabase
 
-1. Create a project (choose the region closest to Nigeria, e.g. EU West).
-2. SQL Editor → run `supabase/migrations/0001_init.sql`. It creates every table,
-   index, the `handle_new_user` trigger, `is_admin()` / `is_subscriber()`
-   helpers, full RLS policies and the public `textbooks` storage bucket.
-3. Add to `.env.local`:
+There are two ways to install PrepAI's tables. **Pick one and be consistent.**
+
+**Option A — shared project (recommended for existing/multi-app projects).**
+Run `supabase/migrations/0002_isolated_schema.sql`. Every PrepAI table lives in
+a dedicated `prepai` schema so nothing collides with the tables of another app
+in the same project. No RLS policies or `handle_new_user` trigger are added to
+`public`.
+
+1. SQL Editor → run `0002_isolated_schema.sql`.
+2. Supabase Dashboard → Project Settings → API → **Exposed schemas** → add
+   `prepai` (keep `public` and `graphql_public`).
+3. Add to `.env.local` **and the Vercel dashboard** (this is the variable that
+   is almost always missed on Vercel, causing a blank "Something went wrong"
+   error):
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+SUPABASE_SERVICE_ROLE_KEY=...
+SUPABASE_DB_SCHEMA=prepai
+```
+
+**Option B — clean project / single-app.**
+Run `supabase/migrations/0001_init.sql`. Tables are created in the `public`
+schema with plain names (`profiles`, `questions`, …). Do **not** set
+`SUPABASE_DB_SCHEMA` in this case (it stays unset; the code defaults to
+`public`).
 
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
@@ -103,12 +125,14 @@ SUPABASE_SERVICE_ROLE_KEY=...
 ```
 
 The data layer switches automatically (`src/lib/db/index.ts`) — no code change.
-Auth then uses Supabase Auth; profiles are created by the signup trigger. Make
-your first admin with:
+Auth then uses Supabase Auth; profiles are created by the signup trigger.
 
-```sql
-update public.profiles set role = 'admin' where email = 'you@example.com';
-```
+> **Troubleshooting a Vercel 500 ("Something went wrong"):** this is almost
+> always a schema mismatch. If you used the isolated `prepai` schema, the
+> `SUPABASE_DB_SCHEMA=prepai` variable **must** be set in the Vercel dashboard
+> (Settings → Environment Variables), not just in `.env.local`. With it missing
+> the app queries `public`, which has no PrepAI session/answer/textbook tables,
+> so every lookup 404s.
 
 ### 4.2 Paystack
 

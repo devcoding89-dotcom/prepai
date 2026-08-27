@@ -14,6 +14,7 @@ import {
   Settings,
   Shield,
   Sparkles,
+  Bot,
   X,
 } from "lucide-react";
 import { Logo } from "@/components/logo";
@@ -26,6 +27,7 @@ const nav = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/practice", label: "Practice", icon: ClipboardList },
   { href: "/reports", label: "AI Reports", icon: Sparkles },
+  { href: "/ai-tutor", label: "AI Tutor", icon: Bot },
   { href: "/sessions", label: "History", icon: BarChart3 },
   { href: "/textbooks", label: "Textbooks", icon: BookOpen },
   { href: "/billing", label: "Subscription", icon: CreditCard },

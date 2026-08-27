@@ -156,5 +156,8 @@ export function verifyWebhookSignature(rawBody: string, signature: string | null
     .createHmac("sha512", process.env.PAYSTACK_SECRET_KEY!)
     .update(rawBody)
     .digest("hex");
-  return hash === signature;
+  // Timing-safe compare so attackers can't probe the HMAC byte by byte.
+  const a = Buffer.from(hash, "utf8");
+  const b = Buffer.from(signature, "utf8");
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
 }

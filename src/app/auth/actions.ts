@@ -11,7 +11,10 @@ export interface FormState {
 }
 
 export async function loginAction(_prev: FormState, formData: FormData): Promise<FormState> {
-  const email = String(formData.get("email") ?? "");
+  const identifier = String(formData.get("email") ?? "");
+  const email = formData.get("admin_login") === "1" && identifier.trim().toLowerCase() === (process.env.ADMIN_USERNAME ?? "khaleed").toLowerCase()
+    ? (process.env.ADMIN_EMAIL ?? "khaleed@prepai.ng")
+    : identifier;
   const password = String(formData.get("password") ?? "");
   const res = await signIn(email, password);
   if (!res.ok) return { error: res.error };

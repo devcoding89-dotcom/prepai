@@ -60,6 +60,16 @@ if (error) {
     process.exit(1);
   }
   userId = found.id;
+  const { error: updateError } = await supabase.auth.admin.updateUserById(userId, {
+    password,
+    email_confirm: true,
+    user_metadata: { full_name: fullName },
+  });
+  if (updateError) {
+    console.error("✖ Could not update the existing admin password:", updateError.message);
+    process.exit(1);
+  }
+  console.log("✓ Existing admin password updated.");
 } else {
   userId = created.user.id;
   console.log("✓ Auth user created.");

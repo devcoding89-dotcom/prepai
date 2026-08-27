@@ -1,12 +1,13 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, CheckCircle2, FileUp, Loader2, Upload } from "lucide-react";
 import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, Textarea } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { csvToObjects } from "@/lib/csv";
+import { EXAMS, type Exam } from "@/lib/types";
 
 type Row = Record<string, unknown>;
 interface Result {
@@ -18,18 +19,27 @@ interface Result {
 export function QuestionImporter() {
   const router = useRouter();
   const [raw, setRaw] = useState("");
-  const [rows, setRows] = useState<Row[]>([]);
+  const [questionRows, setQuestionRows] = useState<Row[]>([]);
   const [parseError, setParseError] = useState<string | null>(null);
   const [result, setResult] = useState<Result | null>(null);
+  const [validated, setValidated] = useState(false);
   const [busy, setBusy] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
+  const [fallbackExam, setFallbackExam] = useState<Exam>("AI GENERATED");
+  const rows: Row[] = questionRows;
 
   const parse = (text: string) => {
     setRaw(text);
     setResult(null);
+    setValidated(false);
+    if (/^\s*Q\s*:/im.test(text)) {
+      const parsed = parseBulkQuestions(text);
+      setQuestionRows(parsed);
+      setParseError(parsed.length ? null : "No complete multiple-choice blocks found. Check the Q:, A-D, and Ans: lines.");
+      return;
+    }
     const trimmed = text.trim();
     if (!trimmed) {
-      setRows([]);
+      setQuestionRows([]);
       setParseError(null);
       return;
     }
@@ -37,43 +47,50 @@ export function QuestionImporter() {
       if (trimmed.startsWith("[") || trimmed.startsWith("{")) {
         const json = JSON.parse(trimmed) as Row | Row[];
         const arr = Array.isArray(json) ? json : [json];
-        setRows(arr);
+        setQuestionRows(arr);
         setParseError(null);
       } else {
         const objs = csvToObjects(trimmed);
         if (!objs.length) throw new Error("No data rows found — check that the first line is a header.");
-        setRows(objs);
+        setQuestionRows(objs);
         setParseError(null);
       }
     } catch (e) {
-      setRows([]);
+      setQuestionRows([]);
       setParseError(e instanceof Error ? e.message : "Could not parse the input.");
     }
   };
 
-  const onFile = async (file: File) => {
-    const text = await file.text();
-    parse(text);
-  };
+  
 
   const send = async (dryRun: boolean) => {
+    if (!rows.length) return;
     setBusy(true);
     setResult(null);
     try {
       const res = await fetch("/api/admin/questions/bulk", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rows, dryRun }),
+        body: JSON.stringify({
+          rows,
+          dryRun,
+          fallbackExam,
+        }),
       });
-      const json = (await res.json()) as Result & { error?: string };
-      if (json.error) {
+      const json = (await res.json().catch(() => null)) as (Result & { error?: string }) | null;
+      if (!json) {
+        setParseError(`Server error (${res.status}). Please try again.`);
+      } else if (json.error) {
         setParseError(json.error);
       } else {
         setResult(json);
+        setValidated(dryRun && !json.errors.length);
         if (!dryRun && json.inserted) {
           setTimeout(() => router.push("/admin/questions?created=1"), 1200);
         }
       }
+    } catch {
+      setParseError("Could not reach the server. Check your connection and try again.");
     } finally {
       setBusy(false);
     }
@@ -84,52 +101,25 @@ export function QuestionImporter() {
       <div className="space-y-5">
         <Card>
           <CardHeader>
-            <CardTitle>Paste or upload</CardTitle>
+            <CardTitle>Paste questions, answers, and explanations</CardTitle>
             <p className="mt-1 text-sm text-ink-500">
-              Accepts CSV (with a header row) or a JSON array. Everything is validated before anything is saved.
+              Paste all question blocks once. The app will arrange the answer, explanation, year, exam, subject, and topic automatically.
             </p>
           </CardHeader>
           <CardBody className="space-y-4">
-            <div
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={(e) => {
-                e.preventDefault();
-                const f = e.dataTransfer.files?.[0];
-                if (f) void onFile(f);
-              }}
-              className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-ink-200 bg-ink-50/50 px-6 py-8 text-center"
-            >
-              <FileUp className="size-8 text-ink-300" />
-              <p className="mt-2 text-sm font-semibold text-ink-800">Drop a .csv or .json file here</p>
-              <p className="text-xs text-ink-500">or</p>
-              <input
-                ref={fileRef}
-                type="file"
-                accept=".csv,.json,text/csv,application/json"
-                className="hidden"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) void onFile(f);
-                }}
-              />
-              <Button type="button" variant="outline" size="sm" className="mt-2" onClick={() => fileRef.current?.click()}>
-                Choose file
-              </Button>
-            </div>
-
             <Textarea
               value={raw}
-              onChange={(e) => parse(e.target.value)}
-              placeholder={`exam,subject,topic,question_text,option_a,option_b,option_c,option_d,correct_answer,explanation,difficulty,year\nJAMB,Mathematics,Algebra,"Solve x + 3 = 7","2","3","4","5",C,"x = 7 − 3 = 4",easy,2023`}
-              className="min-h-56 font-mono text-[12px]"
+              onChange={(event) => parse(event.target.value)}
+              placeholder={`Q: What is 2 + 2?\nA. 3\nB. 4\nC. 5\nD. 6\nAnswer: B\nWhy: Basic addition.\nYear: 2025\nExam: WAEC\nSubject: Mathematics\nTopic: Arithmetic\n\nQ: Next question...`}
+              className="min-h-[32rem] font-mono text-[12px]"
             />
 
             {parseError && <Alert>{parseError}</Alert>}
 
             {rows.length > 0 && !parseError && (
               <Alert tone="info">
-                Parsed <strong>{rows.length}</strong> row{rows.length === 1 ? "" : "s"}. Run a validation check
-                before importing.
+                Matched <strong>{rows.length}</strong> question{rows.length === 1 ? "" : "s"} with answers by row
+                order. Click <strong>Validate</strong> to check every question before saving it.
               </Alert>
             )}
 
@@ -138,10 +128,29 @@ export function QuestionImporter() {
                 {busy ? <Loader2 className="size-4 animate-spin" /> : <CheckCircle2 className="size-4" />}
                 Validate
               </Button>
-              <Button type="button" onClick={() => send(false)} disabled={!rows.length || busy}>
+              <Button type="button" onClick={() => send(false)} disabled={!rows.length || !validated || busy}>
                 <Upload className="size-4" />
                 Import {rows.length || ""} question{rows.length === 1 ? "" : "s"}
               </Button>
+            </div>
+
+            <div className="rounded-xl border border-brand-200 bg-brand-50/60 p-3.5">
+              <label htmlFor="fallback-exam" className="block text-sm font-semibold text-brand-900">
+                AI GENERATED rows use
+              </label>
+              <p className="mt-0.5 text-xs text-brand-800">Rows labelled AI GENERATED will be saved under this exam.</p>
+              <select
+                id="fallback-exam"
+                value={fallbackExam}
+                onChange={(event) => setFallbackExam(event.target.value as Exam)}
+                className="mt-2 w-full rounded-xl border border-brand-200 bg-white px-3 py-2 text-sm text-ink-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 sm:max-w-xs"
+              >
+                {EXAMS.map((exam) => (
+                  <option key={exam} value={exam}>
+                    {exam}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {result && (
@@ -187,7 +196,7 @@ export function QuestionImporter() {
               <table className="w-full min-w-[720px] text-left text-[12px]">
                 <thead className="border-b border-ink-200 bg-ink-50 uppercase tracking-wide text-ink-500">
                   <tr>
-                    {["exam", "subject", "topic", "question", "answer"].map((h) => (
+                    {["exam", "subject", "topic", "question", "answer", "question year", "answer year"].map((h) => (
                       <th key={h} className="px-3 py-2 font-semibold">
                         {h}
                       </th>
@@ -202,6 +211,8 @@ export function QuestionImporter() {
                       <td className="px-3 py-2">{String(r.topic ?? "—")}</td>
                       <td className="max-w-xs truncate px-3 py-2">{String(r.question_text ?? r.question ?? "—")}</td>
                       <td className="px-3 py-2 font-bold">{String(r.correct_answer ?? r.answer ?? "—")}</td>
+                      <td className="px-3 py-2">{String(r.year ?? "—")}</td>
+                      <td className="px-3 py-2">{String(r.answer_year ?? r.year ?? "—")}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -217,13 +228,28 @@ export function QuestionImporter() {
         </CardHeader>
         <CardBody className="space-y-4 text-[13px] leading-relaxed text-ink-600">
           <div>
+            <p className="font-semibold text-ink-900">Bulk paste format</p>
+            <pre className="mt-2 overflow-x-auto rounded-xl bg-ink-50 p-3 font-mono text-[11px] leading-relaxed text-ink-700">{`Q: What is 2 + 2?
+A. 3
+B. 4
+C. 5
+D. 6
+Ans: B
+Why: Basic addition.
+Year: 2025
+Exam: AI GENERATED
+Subject: Mathematics
+Topic: Arithmetic`}</pre>
+            <p className="mt-2 text-[12px] text-ink-500">Paste multiple blocks together. Use <strong>AI GENERATED</strong> for AI-created questions, then choose whether to save them as JAMB, WAEC, or NECO above.</p>
+          </div>
+          <div>
             <p className="font-semibold text-ink-900">Required columns</p>
             <ul className="mt-1.5 list-disc space-y-1 pl-4">
               <li>
-                <code className="font-mono text-[12px]">exam</code> — JAMB, WAEC or NECO
+                Choose JAMB, WAEC, or NECO above. Rows marked <code className="font-mono text-[12px]">AI GENERATED</code> use that exam.
               </li>
               <li>
-                <code className="font-mono text-[12px]">subject</code>, <code className="font-mono text-[12px]">topic</code>
+                Choose the subject above — it is added to every imported row
               </li>
               <li>
                 <code className="font-mono text-[12px]">question_text</code>
@@ -241,7 +267,7 @@ export function QuestionImporter() {
           <div>
             <p className="font-semibold text-ink-900">Optional</p>
             <p className="mt-1">
-              <code className="font-mono text-[12px]">explanation</code>,{" "}
+              <code className="font-mono text-[12px]">topic</code>, <code className="font-mono text-[12px]">explanation</code>,{" "}
               <code className="font-mono text-[12px]">difficulty</code> (easy/medium/hard),{" "}
               <code className="font-mono text-[12px]">year</code>,{" "}
               <code className="font-mono text-[12px]">image_url</code>,{" "}
@@ -280,4 +306,27 @@ export function QuestionImporter() {
       </Card>
     </div>
   );
+}
+
+
+function parseBulkQuestions(text: string): Row[] {
+  return text
+    .split(/(?=^\s*Q\s*:)/im)
+    .map((block) => {
+      const lines = block.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+      const row: Row = { options: [] };
+      for (const line of lines) {
+        if (/^Q\s*:/i.test(line)) row.question_text = line.replace(/^Q\s*:\s*/i, "");
+        else if (/^[A-E][.)]\s*/i.test(line)) (row.options as string[]).push(line.replace(/^[A-E][.)]\s*/i, ""));
+        else if (/^(?:Ans|Answer)\s*:/i.test(line)) row.correct_answer = line.replace(/^(?:Ans|Answer)\s*:\s*/i, "");
+        else if (/^Why\s*:/i.test(line)) row.explanation = line.replace(/^Why\s*:\s*/i, "");
+        else if (/^Year\s*:/i.test(line)) row.year = line.replace(/^Year\s*:\s*/i, "");
+        else if (/^Exam\s*:/i.test(line)) row.exam = line.replace(/^Exam\s*:\s*/i, "").toUpperCase();
+        else if (/^Subject\s*:/i.test(line)) row.subject = line.replace(/^Subject\s*:\s*/i, "");
+        else if (/^Topic\s*:/i.test(line)) row.topic = line.replace(/^Topic\s*:\s*/i, "");
+      }
+      row.answer_year = row.year;
+      return row;
+    })
+    .filter((row) => Boolean(row.question_text && Array.isArray(row.options) && row.options.length >= 2 && row.correct_answer));
 }

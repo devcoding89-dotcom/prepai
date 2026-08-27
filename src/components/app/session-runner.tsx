@@ -74,8 +74,15 @@ export function SessionRunner({
   const flaggedCount = useMemo(() => Object.values(answers).filter((a) => a.flagged).length, [answers]);
 
   // ------------------------------------------------------------------ timer
+  // Deadline-based countdown: browsers throttle setInterval in background
+  // tabs, so decrementing a counter would silently grant extra exam time.
+  // Deriving remaining time from the wall clock keeps the limit honest —
+  // when the user returns to the tab it snaps to the true value.
+  const deadlineRef = useRef<number>(Date.now() + Math.max(0, durationSeconds - elapsedSeconds) * 1000);
   useEffect(() => {
-    const t = setInterval(() => setRemaining((r) => Math.max(0, r - 1)), 1000);
+    const tick = () => setRemaining(Math.max(0, Math.round((deadlineRef.current - Date.now()) / 1000)));
+    tick();
+    const t = setInterval(tick, 500);
     return () => clearInterval(t);
   }, []);
 
@@ -104,14 +111,16 @@ export function SessionRunner({
     [sessionId],
   );
 
+  /** Fold the time spent on the current question into its answer state. Returns the spent ms. */
   const commitTime = useCallback(() => {
     const spent = Date.now() - questionEnteredAt.current;
     questionEnteredAt.current = Date.now();
-    if (!current) return;
+    if (!current) return 0;
     setAnswers((prev) => ({
       ...prev,
       [current.id]: { ...prev[current.id], timeMs: (prev[current.id]?.timeMs ?? 0) + spent, visited: true },
     }));
+    return spent;
   }, [current]);
 
   const select = (letter: string) => {
@@ -155,12 +164,14 @@ export function SessionRunner({
     if (submittedRef.current) return;
     submittedRef.current = true;
     setSubmitting(true);
-    commitTime();
+    // commitTime() updates state asynchronously, so fold the final time chunk
+    // into the payload directly instead of relying on the answers snapshot.
+    const extraMs = commitTime();
     const payload = Object.entries(answers).map(([question_id, a]) => ({
       question_id,
       selected: a.selected,
       flagged: a.flagged,
-      time_ms: a.timeMs,
+      time_ms: question_id === current?.id ? a.timeMs + extraMs : a.timeMs,
     }));
     try {
       const res = await fetch(`/api/sessions/${sessionId}/submit`, {
@@ -175,7 +186,7 @@ export function SessionRunner({
       setSubmitting(false);
       alert("Could not submit — check your connection and try again.");
     }
-  }, [answers, commitTime, router, sessionId]);
+  }, [answers, commitTime, current?.id, router, sessionId]);
 
   // auto-submit when the clock runs out
   useEffect(() => {

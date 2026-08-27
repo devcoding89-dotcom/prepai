@@ -3,11 +3,11 @@ import { redirect } from "next/navigation";
 import { BookOpen, Bookmark, Search } from "lucide-react";
 import { canAccessPaidFeatures, getCurrentUser } from "@/lib/auth";
 import { repo } from "@/lib/db";
-import { Badge, Card, CardBody, EmptyState } from "@/components/ui/card";
+import { Card, CardBody, EmptyState } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { buttonClass, LinkButton } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import type { Exam } from "@/lib/types";
+import { EXAMS, type Exam } from "@/lib/types";
 
 export const metadata = { title: "Textbooks" };
 export const dynamic = "force-dynamic";
@@ -20,7 +20,8 @@ export default async function TextbooksPage({
   const user = await getCurrentUser();
   if (!user) redirect("/auth/login");
   const sp = await searchParams;
-  const exam = (sp.exam as Exam) || user.target_exam || "JAMB";
+  const requestedExam = sp.exam as Exam;
+  const exam = EXAMS.includes(requestedExam) ? requestedExam : "ALL";
 
   const [all, chapters, bookmarks] = await Promise.all([
     repo.listTextbooks({ exam, onlyPublished: true }),
@@ -40,7 +41,33 @@ export default async function TextbooksPage({
             Chapters tagged by topic, so your weakness report can point you straight at the right pages.
           </p>
         </div>
-        <Badge tone="brand">{exam}</Badge>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href="/textbooks"
+            className={cn(
+              "rounded-lg border px-2.5 py-1.5 text-[12px] font-bold transition-colors",
+              exam === "ALL"
+                ? "border-brand-500 bg-brand-50 text-brand-700"
+                : "border-ink-200 bg-white text-ink-500 hover:border-brand-300 hover:text-brand-700",
+            )}
+          >
+            All exams
+          </Link>
+          {EXAMS.map((option) => (
+            <Link
+              key={option}
+              href={`/textbooks?exam=${option}`}
+              className={cn(
+                "rounded-lg border px-2.5 py-1.5 text-[12px] font-bold transition-colors",
+                exam === option
+                  ? "border-brand-500 bg-brand-50 text-brand-700"
+                  : "border-ink-200 bg-white text-ink-500 hover:border-brand-300 hover:text-brand-700",
+              )}
+            >
+              {option}
+            </Link>
+          ))}
+        </div>
       </div>
 
       {!subscribed && (
