@@ -8,7 +8,7 @@ export default function Refund() {
       <h2>1. Our promise</h2>
       <p>
         If a payment succeeds but your subscription does not activate, we will fix it or refund you in full.
-        Write to support@prepai.ng with your payment reference and we will respond within 48 hours.
+        Write to supportprepclass@gmail.com with your payment reference and we will respond within 48 hours.
       </p>
       <h2>2. Change of mind</h2>
       <p>
@@ -27,7 +27,7 @@ export default function Refund() {
         working days depending on your bank.
       </p>
       <h2>5. Contact</h2>
-      <p>support@prepai.ng</p>
+      <p>supportprepclass@gmail.com</p>
     </LegalPage>
   );
 }

@@ -48,7 +48,7 @@ export default function Terms() {
         deletion of your data.
       </p>
       <h2>9. Contact</h2>
-      <p>support@prepai.ng</p>
+      <p>supportprepclass@gmail.com</p>
     </LegalPage>
   );
 }

@@ -1,13 +1,7 @@
-import { Mail, MessageCircle, Phone } from "lucide-react";
+import { Mail, MessageCircle } from "lucide-react";
 import { Card, CardBody } from "@/components/ui/card";
 
 export const metadata = { title: "Contact" };
-
-const channels = [
-  { icon: Mail, label: "Email", value: "support@prepai.ng", note: "We reply within 24 hours on weekdays." },
-  { icon: MessageCircle, label: "WhatsApp", value: "+234 800 000 0000", note: "Fastest for payment issues." },
-  { icon: Phone, label: "Phone", value: "+234 800 000 0000", note: "Mon–Fri, 9am–5pm WAT." },
-];
 
 export default function ContactPage() {
   return (
@@ -19,17 +13,36 @@ export default function ContactPage() {
         sort it out.
       </p>
 
-      <div className="mt-8 grid gap-4 sm:grid-cols-3">
-        {channels.map((c) => (
-          <Card key={c.label}>
-            <CardBody className="pt-5">
-              <c.icon className="size-5 text-brand-600" />
-              <p className="mt-3 text-[11px] font-bold uppercase tracking-wide text-ink-400">{c.label}</p>
-              <p className="mt-0.5 text-sm font-semibold text-ink-950">{c.value}</p>
-              <p className="mt-1 text-[12px] leading-relaxed text-ink-500">{c.note}</p>
-            </CardBody>
-          </Card>
-        ))}
+      <div className="mt-8 grid gap-4 sm:grid-cols-2">
+        <Card>
+          <CardBody className="pt-5">
+            <Mail className="size-5 text-brand-600" />
+            <p className="mt-3 text-[11px] font-bold uppercase tracking-wide text-ink-400">Email</p>
+            <a
+              href="mailto:supportprepclass@gmail.com"
+              className="mt-0.5 block text-sm font-semibold text-brand-700 hover:underline"
+            >
+              supportprepclass@gmail.com
+            </a>
+            <p className="mt-1 text-[12px] leading-relaxed text-ink-500">We reply within 24 hours on weekdays.</p>
+          </CardBody>
+        </Card>
+
+        <Card>
+          <CardBody className="pt-5">
+            <MessageCircle className="size-5 text-green-600" />
+            <p className="mt-3 text-[11px] font-bold uppercase tracking-wide text-ink-400">WhatsApp</p>
+            <a
+              href="https://wa.me/2349045660915"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-0.5 block text-sm font-semibold text-green-700 hover:underline"
+            >
+              09045660915
+            </a>
+            <p className="mt-1 text-[12px] leading-relaxed text-ink-500">Fastest for payment &amp; urgent issues.</p>
+          </CardBody>
+        </Card>
       </div>
 
       <Card className="mt-6">
@@ -41,8 +54,11 @@ export default function ContactPage() {
           </p>
           <h2 className="mt-6 text-lg font-bold text-ink-950">Schools and study centres</h2>
           <p className="mt-2 text-[15px] leading-relaxed text-ink-600">
-            We offer bulk accounts with a shared progress dashboard for tutorial centres. Email us with the
-            number of students and we will send pricing.
+            We offer bulk accounts with a shared progress dashboard for tutorial centres. Email us at{" "}
+            <a href="mailto:supportprepclass@gmail.com" className="font-semibold text-brand-700 hover:underline">
+              supportprepclass@gmail.com
+            </a>{" "}
+            with the number of students and we will send pricing.
           </p>
         </CardBody>
       </Card>

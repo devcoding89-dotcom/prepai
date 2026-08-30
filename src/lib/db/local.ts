@@ -86,13 +86,9 @@ function buildSeed(): DB {
     updated_at: ts,
   });
 
-  // Starter content is opt-in — set PREPAI_SEED_CONTENT=1 to load the sample
-  // question bank and textbook chapters. Off by default so you start clean and
-  // import your own material from Admin -> Questions -> Import.
-  if (process.env.PREPAI_SEED_CONTENT === "1") {
-    db.questions = seedQuestions().map((q) => ({ ...q, id: uid(), created_at: ts }));
-    db.textbooks = seedTextbooks().map((t) => ({ ...t, id: uid(), created_at: ts }));
-  }
+  // Starter content is seeded by default so all subjects are available immediately.
+  db.questions = seedQuestions().map((q) => ({ ...q, id: uid(), created_at: ts }));
+  db.textbooks = seedTextbooks().map((t) => ({ ...t, id: uid(), created_at: ts }));
 
   return db;
 }
@@ -106,6 +102,23 @@ function loadSync(): DB {
     if (fs.existsSync(DB_FILE)) {
       cache = JSON.parse(fs.readFileSync(DB_FILE, "utf8")) as DB;
       cache.settings = { ...DEFAULT_SETTINGS, ...cache.settings };
+      let mutated = false;
+      const ts = now();
+      if (!cache.questions || cache.questions.length === 0) {
+        cache.questions = seedQuestions().map((q) => ({ ...q, id: uid(), created_at: ts }));
+        mutated = true;
+      }
+      if (!cache.textbooks || cache.textbooks.length === 0) {
+        cache.textbooks = seedTextbooks().map((t) => ({ ...t, id: uid(), created_at: ts }));
+        mutated = true;
+      }
+      if (mutated) {
+        try {
+          fs.writeFileSync(DB_FILE, JSON.stringify(cache, null, 2));
+        } catch (err) {
+          console.error("[db] could not persist seeded db.json", err);
+        }
+      }
       return cache;
     }
   } catch (err) {

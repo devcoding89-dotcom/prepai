@@ -37,7 +37,7 @@ export default function Privacy() {
       <h2>6. Your rights</h2>
       <p>
         You may request a copy of your data or ask us to delete your account at any time by writing to
-        <strong> support@prepai.ng</strong>. Deletion removes your profile, sessions and reports permanently.
+        <strong>supportprepclass@gmail.com</strong>. Deletion removes your profile, sessions and reports permanently.
       </p>
       <h2>7. Children</h2>
       <p>
@@ -45,7 +45,7 @@ export default function Privacy() {
         guardian review this policy with you.
       </p>
       <h2>8. Contact</h2>
-      <p>Questions about this policy: support@prepai.ng</p>
+      <p>Questions about this policy: supportprepclass@gmail.com</p>
     </LegalPage>
   );
 }
