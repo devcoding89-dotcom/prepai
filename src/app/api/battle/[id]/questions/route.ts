@@ -10,8 +10,36 @@ export async function GET(
     const room = await repo.getBattleRoom(id);
     if (!room) return NextResponse.json({ error: "Room not found" }, { status: 404 });
 
-    if (room.status === "waiting") {
-      return NextResponse.json({ error: "Battle has not started yet" }, { status: 400 });
+    // If room is active but question_ids were empty for any reason, sample them now
+    if (room.question_ids.length === 0) {
+      const count = room.mode === "quick" ? 10 : 50;
+      let sampled = await repo.pickQuestions({
+        exam: room.exam,
+        subjects: room.subjects,
+        count,
+        shuffle: true,
+      });
+      if (sampled.length === 0) {
+        sampled = await repo.pickQuestions({
+          exam: room.exam,
+          count,
+          shuffle: true,
+        });
+      }
+      if (sampled.length === 0) {
+        sampled = await repo.pickQuestions({
+          exam: "JAMB",
+          count,
+          shuffle: true,
+        });
+      }
+      const qids = sampled.map((q) => q.id);
+      await repo.updateBattleRoom(id, {
+        question_ids: qids,
+        status: "active",
+        started_at: room.started_at || new Date().toISOString(),
+      });
+      room.question_ids = qids;
     }
 
     const questions = [];

@@ -13,19 +13,26 @@ function generateCode(): string {
 export async function POST(req: Request) {
   try {
     const user = await getCurrentUser();
-    if (!user) return NextResponse.json({ error: "Login required" }, { status: 401 });
-
     const body = await req.json();
-    const { exam, subjects, mode, duration_minutes } = body as {
+    const { exam, subjects, mode, duration_minutes, host_name } = body as {
       exam: Exam;
       subjects: string[];
       mode: "quick" | "standard";
       duration_minutes: number;
+      host_name?: string;
     };
 
     if (!exam || !subjects?.length || !mode) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+      return NextResponse.json({ error: "Missing required fields (exam, subjects, mode)" }, { status: 400 });
     }
+
+    const effectiveHostName = (
+      user?.full_name ||
+      host_name?.trim() ||
+      user?.email?.split("@")[0] ||
+      "Host"
+    ).trim();
+    const effectiveHostUserId = user?.id || `guest_host_${crypto.randomUUID()}`;
 
     // Generate unique code (retry if collision)
     let code = generateCode();
@@ -41,8 +48,8 @@ export async function POST(req: Request) {
 
     const room = await repo.createBattleRoom({
       code,
-      host_user_id: user.id,
-      host_name: user.full_name || user.email.split("@")[0],
+      host_user_id: effectiveHostUserId,
+      host_name: effectiveHostName,
       exam,
       subjects,
       question_ids: [], // filled when host starts
@@ -57,8 +64,8 @@ export async function POST(req: Request) {
     // Host auto-joins as first participant
     const participant = await repo.addBattleParticipant({
       room_id: room.id,
-      user_id: user.id,
-      display_name: user.full_name || user.email.split("@")[0],
+      user_id: user?.id || null,
+      display_name: effectiveHostName,
       is_host: true,
       answers: {},
       score_percent: 0,
@@ -68,9 +75,14 @@ export async function POST(req: Request) {
       finished_at: null,
     });
 
-    return NextResponse.json({ roomId: room.id, code: room.code, participantId: participant.id });
+    return NextResponse.json({
+      roomId: room.id,
+      code: room.code,
+      participantId: participant.id,
+      hostName: effectiveHostName,
+    });
   } catch (e) {
     console.error("Battle create error:", e);
-    return NextResponse.json({ error: "Failed to create room" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to create battle room" }, { status: 500 });
   }
 }

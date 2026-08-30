@@ -28,6 +28,7 @@ export function BattleSetup({ user, subjectCountsByExam }: Props) {
 
   // Host state
   const [exam, setExam] = useState<Exam>("JAMB");
+  const [hostName, setHostName] = useState(user?.full_name || "");
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>(["Mathematics", "Use of English"]);
   const [mode, setMode] = useState<"quick" | "standard">("quick");
   const [durationMinutes, setDurationMinutes] = useState<number>(15);
@@ -49,12 +50,21 @@ export function BattleSetup({ user, subjectCountsByExam }: Props) {
     );
   };
 
+  const handleExamChange = (newExam: Exam) => {
+    setExam(newExam);
+    const counts = subjectCountsByExam[newExam] || {};
+    const valid = (SUBJECTS_BY_EXAM[newExam] || []).filter((s) => (counts[s] || 0) > 0);
+    if (valid.length > 0) {
+      setSelectedSubjects(valid.slice(0, 2));
+    } else {
+      setSelectedSubjects([SUBJECTS_BY_EXAM[newExam]?.[0] || "Mathematics"]);
+    }
+  };
+
   const handleCreateRoom = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) {
-      router.push("/auth/login?next=/battle");
-      return;
-    }
+    const effectiveName = (hostName.trim() || user?.full_name || "Host").trim();
+
     if (selectedSubjects.length === 0) {
       setHostError("Please pick at least one subject for the battle.");
       return;
@@ -72,6 +82,7 @@ export function BattleSetup({ user, subjectCountsByExam }: Props) {
           subjects: selectedSubjects,
           mode,
           duration_minutes: durationMinutes,
+          host_name: effectiveName,
         }),
       });
       const data = await res.json();
@@ -84,6 +95,7 @@ export function BattleSetup({ user, subjectCountsByExam }: Props) {
       // Save participantId and host status in localStorage for session tracking
       localStorage.setItem(`battle_${data.roomId}_pid`, data.participantId);
       localStorage.setItem(`battle_${data.roomId}_is_host`, "true");
+      localStorage.setItem(`battle_${data.roomId}_name`, effectiveName);
 
       router.push(`/battle/${data.roomId}/lobby`);
     } catch {
@@ -223,12 +235,7 @@ export function BattleSetup({ user, subjectCountsByExam }: Props) {
                   <button
                     key={e}
                     type="button"
-                    onClick={() => {
-                      setExam(e);
-                      // set sensible defaults for subjects in this exam
-                      const newAvailable = SUBJECTS_BY_EXAM[e] || [];
-                      setSelectedSubjects([newAvailable[0] || "Mathematics"]);
-                    }}
+                    onClick={() => handleExamChange(e)}
                     className={`rounded-2xl border p-3.5 text-center text-sm font-bold transition-all ${
                       exam === e
                         ? "border-brand-500 bg-brand-50 text-brand-700 ring-2 ring-brand-500/20"
@@ -238,6 +245,26 @@ export function BattleSetup({ user, subjectCountsByExam }: Props) {
                     {e}
                   </button>
                 ))}
+              </CardBody>
+            </Card>
+
+            {/* Host Name input */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Your Host Name</CardTitle>
+                <p className="mt-0.5 text-xs text-ink-500">
+                  This will be shown as the room owner in the lobby and leaderboard.
+                </p>
+              </CardHeader>
+              <CardBody>
+                <Input
+                  type="text"
+                  placeholder="e.g. Adeola, Mr. John, Ibrahim"
+                  value={hostName}
+                  onChange={(e) => setHostName(e.target.value)}
+                  className="font-semibold text-ink-900"
+                  required
+                />
               </CardBody>
             </Card>
 

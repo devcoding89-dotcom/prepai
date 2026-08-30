@@ -3,36 +3,65 @@ import { getCurrentUser } from "@/lib/auth";
 import { repo } from "@/lib/db";
 
 export async function POST(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const user = await getCurrentUser();
-    if (!user) return NextResponse.json({ error: "Login required" }, { status: 401 });
-
     const { id } = await params;
+    const body = (await req.json().catch(() => ({}))) as { participant_id?: string };
+
     const room = await repo.getBattleRoom(id);
     if (!room) return NextResponse.json({ error: "Room not found" }, { status: 404 });
 
-    // Only the host can start the battle
-    if (room.host_user_id !== user.id) {
+    // Validate host authority
+    const participants = await repo.listBattleParticipants(id);
+    const hostParticipant = participants.find((p) => p.is_host);
+
+    const isHostBySession = user && user.id === room.host_user_id;
+    const isHostByParticipant = body.participant_id && hostParticipant && hostParticipant.id === body.participant_id;
+
+    if (!isHostBySession && !isHostByParticipant) {
       return NextResponse.json({ error: "Only the host can start the battle" }, { status: 403 });
     }
-    if (room.status !== "waiting") {
-      return NextResponse.json({ error: "Battle already started or finished" }, { status: 400 });
+
+    if (room.status === "active") {
+      return NextResponse.json({
+        status: "active",
+        question_count: room.question_ids.length,
+        started_at: room.started_at,
+      });
+    }
+
+    if (room.status === "finished") {
+      return NextResponse.json({ error: "Battle has already finished" }, { status: 400 });
     }
 
     // Pick questions based on room config
     const count = room.mode === "quick" ? 10 : 50;
-    const questions = await repo.pickQuestions({
+    let questions = await repo.pickQuestions({
       exam: room.exam,
       subjects: room.subjects,
       count,
       shuffle: true,
     });
 
+    // Fallback: if selected subjects didn't return enough questions, sample from any subject in the exam
     if (questions.length === 0) {
-      return NextResponse.json({ error: "No questions available for the selected subjects" }, { status: 400 });
+      questions = await repo.pickQuestions({
+        exam: room.exam,
+        count,
+        shuffle: true,
+      });
+    }
+
+    if (questions.length === 0) {
+      // Last resort fallback: pick from any exam
+      questions = await repo.pickQuestions({
+        exam: "JAMB",
+        count,
+        shuffle: true,
+      });
     }
 
     const now = new Date().toISOString();

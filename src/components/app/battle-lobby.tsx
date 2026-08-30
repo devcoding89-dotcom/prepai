@@ -119,6 +119,7 @@ export function BattleLobby({
       const res = await fetch(`/api/battle/${roomId}/start`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ participant_id: participantId }),
       });
       const data = await res.json();
       if (!res.ok) {
