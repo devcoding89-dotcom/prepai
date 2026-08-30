@@ -97,6 +97,16 @@ export const supabaseRepo: Repo = {
     const { count } = await admin().from(T("profiles")).select("*", { count: "exact", head: true });
     return count ?? 0;
   },
+  async deleteUser(id: string) {
+    // Delete profile first
+    await admin().from(T("profiles")).delete().eq("id", id);
+    // Delete from auth.users if available
+    try {
+      await admin().auth.admin.deleteUser(id);
+    } catch (e) {
+      console.warn("[supabase] delete auth user error:", e);
+    }
+  },
 
   // ---------------- questions ----------------
   async listQuestions(f: QuestionFilter = {}) {

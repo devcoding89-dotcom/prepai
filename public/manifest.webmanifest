@@ -1,6 +1,6 @@
 {
-  "name": "PrepAI — CBT Practice for JAMB, WAEC & NECO",
-  "short_name": "PrepAI",
+  "name": "PREP CLASS — CBT Practice for JAMB, WAEC & NECO",
+  "short_name": "PREP CLASS",
   "description": "Timed CBT practice with AI weakness reports and matched textbook chapters.",
   "start_url": "/dashboard",
   "scope": "/",
@@ -10,10 +10,12 @@
   "theme_color": "#1f3fed",
   "categories": ["education"],
   "icons": [
-    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
   ],
   "shortcuts": [
-    { "name": "Start practice", "url": "/practice" },
-    { "name": "My reports", "url": "/reports" }
+    { "name": "Start practice", "short_name": "Practice", "url": "/practice", "description": "Start a new practice session" },
+    { "name": "My reports", "short_name": "Reports", "url": "/reports", "description": "View AI weakness reports" },
+    { "name": "AI Tutor", "short_name": "Tutor", "url": "/ai-tutor", "description": "Ask the AI tutor" }
   ]
 }

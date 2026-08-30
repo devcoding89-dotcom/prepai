@@ -88,7 +88,10 @@ export default async function AdminUsersPage({
                       <ActionButton id={p.id} op="grant" label="+30 days" tone="success" />
                       {p.subscription_status === "active" && <ActionButton id={p.id} op="revoke" label="Revoke" tone="danger" />}
                       {p.role === "student" ? (
-                        <ActionButton id={p.id} op="make_admin" label="Make admin" tone="neutral" />
+                        <>
+                          <ActionButton id={p.id} op="make_admin" label="Make admin" tone="neutral" />
+                          <ActionButton id={p.id} op="delete" label="Delete" tone="danger" />
+                        </>
                       ) : (
                         <ActionButton id={p.id} op="make_student" label="Make student" tone="neutral" />
                       )}

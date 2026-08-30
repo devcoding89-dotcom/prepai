@@ -152,6 +152,18 @@ export async function updateUserAction(formData: FormData) {
   if (op === "revoke") {
     await repo.updateProfile(id, { subscription_status: "inactive", subscription_expires_at: null });
   }
+  if (op === "delete") {
+    await repo.deleteUser(id);
+  }
+  revalidatePath("/admin/users");
+}
+
+export async function deleteUserAction(formData: FormData) {
+  await requireAdmin();
+  const id = String(formData.get("id") ?? "");
+  if (id) {
+    await repo.deleteUser(id);
+  }
   revalidatePath("/admin/users");
 }
 

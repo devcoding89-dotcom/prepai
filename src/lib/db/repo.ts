@@ -56,6 +56,7 @@ export interface Repo {
   updateProfile(id: string, patch: Partial<Profile>): Promise<Profile | null>;
   listProfiles(opts?: { search?: string; limit?: number }): Promise<Profile[]>;
   countProfiles(): Promise<number>;
+  deleteUser(id: string): Promise<void>;
 
   // questions
   listQuestions(f?: QuestionFilter): Promise<{ rows: Question[]; total: number }>;

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   BarChart3,
   BookOpen,
@@ -64,6 +64,30 @@ export function AppShell({
 }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+
+  useEffect(() => {
+    const handler = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstall = () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then((choiceResult: any) => {
+        if (choiceResult.outcome === 'accepted') {
+          console.log('User accepted the install prompt');
+        } else {
+          console.log('User dismissed the install prompt');
+        }
+        setDeferredPrompt(null);
+      });
+    }
+  };
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + "/");
 
   const sidebar = (onClick?: () => void) => (
@@ -170,6 +194,11 @@ export function AppShell({
                 {user.full_name?.split(" ")[0] ?? "Student"}
               </span>
             </Link>
+            {deferredPrompt && (
+              <button onClick={handleInstall} className="ml-2 rounded-xl bg-brand-600 px-3 py-1 text-white hover:bg-brand-700">
+                Add to Home
+              </button>
+            )}
           </div>
         </header>
 

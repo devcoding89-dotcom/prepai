@@ -203,6 +203,19 @@ export const localRepo: Repo = {
   async countProfiles() {
     return loadSync().users.length;
   },
+  async deleteUser(id: string) {
+    await mutate((db) => {
+      db.users = db.users.filter((u) => u.id !== id);
+      db.sessions = db.sessions.filter((s) => s.user_id !== id);
+      db.answers = db.answers.filter((a) => {
+        const session = db.sessions.find((s) => s.id === a.session_id);
+        return Boolean(session);
+      });
+      db.weaknesses = db.weaknesses.filter((w) => w.user_id !== id);
+      db.bookmarks = db.bookmarks.filter((b) => b.user_id !== id);
+      db.payments = db.payments.filter((p) => p.user_id !== id);
+    });
+  },
 
   // ---------------- questions ----------------
   async listQuestions(f = {}) {
