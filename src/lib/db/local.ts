@@ -100,13 +100,18 @@ function buildSeed(): DB {
 }
 
 let cache: DB | null = null;
+let cacheMtime = 0;
 let writeChain: Promise<void> = Promise.resolve();
 
 function loadSync(): DB {
-  if (cache) return cache;
   try {
     if (fs.existsSync(DB_FILE)) {
+      const mtime = fs.statSync(DB_FILE).mtimeMs;
+      if (cache && mtime === cacheMtime) {
+        return cache;
+      }
       cache = JSON.parse(fs.readFileSync(DB_FILE, "utf8")) as DB;
+      cacheMtime = mtime;
       cache.settings = { ...DEFAULT_SETTINGS, ...cache.settings };
       cache.battle_rooms = cache.battle_rooms || [];
       cache.battle_participants = cache.battle_participants || [];
@@ -123,6 +128,7 @@ function loadSync(): DB {
       if (mutated) {
         try {
           fs.writeFileSync(DB_FILE, JSON.stringify(cache, null, 2));
+          cacheMtime = fs.statSync(DB_FILE).mtimeMs;
         } catch (err) {
           console.error("[db] could not persist seeded db.json", err);
         }
@@ -136,6 +142,7 @@ function loadSync(): DB {
   try {
     fs.mkdirSync(DATA_DIR, { recursive: true });
     fs.writeFileSync(DB_FILE, JSON.stringify(cache, null, 2));
+    cacheMtime = fs.statSync(DB_FILE).mtimeMs;
   } catch (err) {
     console.error("[db] could not write db.json", err);
   }
@@ -148,6 +155,9 @@ function persist() {
     .then(async () => {
       await fsp.mkdir(DATA_DIR, { recursive: true });
       await fsp.writeFile(DB_FILE, snapshot);
+      try {
+        cacheMtime = (await fsp.stat(DB_FILE)).mtimeMs;
+      } catch {}
     })
     .catch((e) => console.error("[db] write failed", e));
   return writeChain;
