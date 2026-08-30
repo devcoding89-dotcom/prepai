@@ -97,7 +97,7 @@ export default async function DashboardPage() {
               <div>
                 <p className="text-sm font-semibold text-amber-900">You have an unfinished session</p>
                 <p className="text-xs text-amber-700">
-                  {inProgress.subjects.join(", ")} · started {timeAgo(inProgress.started_at)}
+                  {(inProgress.subjects ?? []).join(", ") || "Practice session"} · started {timeAgo(inProgress.started_at)}
                 </p>
               </div>
             </div>
@@ -269,7 +269,7 @@ export default async function DashboardPage() {
                   </span>
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold text-ink-900">
-                      {s.subjects.join(", ") || "Mixed"}
+                      {(s.subjects ?? []).join(", ") || "Mixed"}
                     </p>
                     <p className="text-xs text-ink-500">
                       {s.total_questions} questions · {formatDuration(s.time_taken_seconds)} · {formatDate(s.started_at)}

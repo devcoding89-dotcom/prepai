@@ -88,7 +88,7 @@ export default async function ReportPage({ params }: { params: Promise<{ id: str
               </h1>
               <p className="mt-1 max-w-md text-sm leading-relaxed text-ink-500">{analysis.headline}</p>
               <p className="mt-2 text-xs text-ink-400">
-                {session.subjects.join(", ")} · {formatDateTime(session.started_at)}
+                {(session.subjects ?? []).join(", ") || "Mixed"} · {formatDateTime(session.started_at)}
               </p>
             </div>
           </div>

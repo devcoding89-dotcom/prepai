@@ -61,7 +61,7 @@ export default async function SessionsPage() {
                       {s.exam}
                     </span>
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-ink-900">{s.subjects.join(", ") || "Mixed"}</p>
+                      <p className="truncate text-sm font-semibold text-ink-900">{(s.subjects ?? []).join(", ") || "Mixed"}</p>
                       <p className="text-xs text-ink-500">
                         {formatDateTime(s.started_at)} · {s.total_questions} questions ·{" "}
                         {formatDuration(s.time_taken_seconds)}

@@ -118,7 +118,7 @@ export default async function ReportsPage() {
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
                         <p className="text-sm font-bold text-ink-950">
-                          {s.exam} · {s.subjects.join(", ")}
+                          {s.exam} · {(s.subjects ?? []).join(", ") || "Mixed"}
                         </p>
                         <p className="text-xs text-ink-500">
                           {formatDate(s.started_at)} · {s.total_questions} questions
