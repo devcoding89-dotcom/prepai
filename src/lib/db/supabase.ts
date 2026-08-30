@@ -49,8 +49,8 @@ export function admin(): AnyClient {
     {
       auth: { persistSession: false, autoRefreshToken: false },
       // Set SUPABASE_DB_SCHEMA=prepai to keep PrepAI's tables in their own
-      // Postgres schema — required when the project is shared with another app.
-      db: { schema: process.env.SUPABASE_DB_SCHEMA || "public" },
+      // Postgres schema — defaults to prepai (from migration 0002_isolated_schema.sql).
+      db: { schema: process.env.SUPABASE_DB_SCHEMA || "prepai" },
     },
   );
   return _admin;

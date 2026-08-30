@@ -64,14 +64,13 @@ async function getGuestProfile(): Promise<Profile> {
 function secret() {
   if (process.env.AUTH_SECRET) return process.env.AUTH_SECRET;
   if (process.env.NODE_ENV !== "production") return "prepai-dev-secret-change-me";
-  // In production without AUTH_SECRET, generate an ephemeral per-process secret
-  // so auth doesn't hard-crash. Set AUTH_SECRET for session persistence across
-  // restarts — otherwise every deploy invalidates existing sessions.
-  if (!process.env.__AUTH_SECRET_FALLBACK) {
-    process.env.__AUTH_SECRET_FALLBACK = crypto.randomBytes(32).toString("hex");
+  // In production without AUTH_SECRET, use a deterministic key derived from
+  // SUPABASE_SERVICE_ROLE_KEY or a stable project fallback so sessions are
+  // shared consistently across all serverless lambda instances.
+  if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return crypto.createHash("sha256").update(process.env.SUPABASE_SERVICE_ROLE_KEY).digest("hex");
   }
-  console.warn("[auth] AUTH_SECRET not set — using an ephemeral signing key. Set AUTH_SECRET in your environment for persistent sessions.");
-  return process.env.__AUTH_SECRET_FALLBACK;
+  return "prepai-prod-fallback-secret-key-123456";
 }
 
 function sign(payload: string) {
