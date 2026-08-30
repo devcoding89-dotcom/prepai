@@ -167,20 +167,48 @@ export const supabaseRepo: Repo = {
     return spec.shuffle === false ? out : out.sort(() => Math.random() - 0.5);
   },
   async questionFacets(exam) {
-    let q = admin().from(T("questions")).select("subject,topic");
-    if (exam && exam !== "ALL") q = q.eq("exam", exam);
-    const rows = (unwrap(await q.limit(10000), "facets") ?? []) as { subject: string; topic: string }[];
+    const allRows: { subject: string; topic: string }[] = [];
+    let from = 0;
+    const pageSize = 1000;
+    while (true) {
+      let q = admin().from(T("questions")).select("subject,topic").eq("is_active", true);
+      if (exam && exam !== "ALL") q = q.eq("exam", exam);
+      const res = await q.range(from, from + pageSize - 1);
+      const rows = (unwrap(res, "facets") ?? []) as { subject: string; topic: string }[];
+      if (!rows.length) break;
+      allRows.push(...rows);
+      if (rows.length < pageSize) break;
+      from += pageSize;
+    }
+    const topicsBySubject: Record<string, string[]> = {};
+    for (const r of allRows) {
+      if (!topicsBySubject[r.subject]) topicsBySubject[r.subject] = [];
+      if (r.topic && !topicsBySubject[r.subject].includes(r.topic)) {
+        topicsBySubject[r.subject].push(r.topic);
+      }
+    }
     return {
-      subjects: [...new Set(rows.map((r) => r.subject))].sort(),
-      topics: [...new Set(rows.map((r) => r.topic))].sort(),
+      subjects: [...new Set(allRows.map((r) => r.subject))].sort(),
+      topics: [...new Set(allRows.map((r) => r.topic))].sort(),
+      topicsBySubject,
     };
   },
   async questionCountsBySubject(exam) {
-    let q = admin().from(T("questions")).select("subject").eq("is_active", true);
-    if (exam && exam !== "ALL") q = q.eq("exam", exam);
-    const rows = (unwrap(await q.limit(10000), "counts") ?? []) as { subject: string }[];
+    const allRows: { subject: string }[] = [];
+    let from = 0;
+    const pageSize = 1000;
+    while (true) {
+      let q = admin().from(T("questions")).select("subject").eq("is_active", true);
+      if (exam && exam !== "ALL") q = q.eq("exam", exam);
+      const res = await q.range(from, from + pageSize - 1);
+      const rows = (unwrap(res, "counts") ?? []) as { subject: string }[];
+      if (!rows.length) break;
+      allRows.push(...rows);
+      if (rows.length < pageSize) break;
+      from += pageSize;
+    }
     const map = new Map<string, number>();
-    for (const r of rows) map.set(r.subject, (map.get(r.subject) ?? 0) + 1);
+    for (const r of allRows) map.set(r.subject, (map.get(r.subject) ?? 0) + 1);
     return [...map.entries()].map(([subject, count]) => ({ subject, count })).sort((a, b) => b.count - a.count);
   },
 

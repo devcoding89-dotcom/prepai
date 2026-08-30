@@ -65,7 +65,7 @@ export interface Repo {
   deleteQuestion(id: string): Promise<void>;
   bulkCreateQuestions(rows: Omit<Question, "id" | "created_at">[]): Promise<number>;
   pickQuestions(spec: PickSpec): Promise<Question[]>;
-  questionFacets(exam?: Exam | "ALL"): Promise<{ subjects: string[]; topics: string[] }>;
+  questionFacets(exam?: Exam | "ALL"): Promise<{ subjects: string[]; topics: string[]; topicsBySubject?: Record<string, string[]> }>;
   questionCountsBySubject(exam?: Exam | "ALL"): Promise<{ subject: string; count: number }[]>;
 
   // sessions + answers

@@ -290,9 +290,17 @@ export const localRepo: Repo = {
   async questionFacets(exam) {
     const db = loadSync();
     const rows = db.questions.filter((q) => matchExam(q.exam, exam));
+    const topicsBySubject: Record<string, string[]> = {};
+    for (const r of rows) {
+      if (!topicsBySubject[r.subject]) topicsBySubject[r.subject] = [];
+      if (r.topic && !topicsBySubject[r.subject].includes(r.topic)) {
+        topicsBySubject[r.subject].push(r.topic);
+      }
+    }
     return {
       subjects: [...new Set(rows.map((q) => q.subject))].sort(),
       topics: [...new Set(rows.map((q) => q.topic))].sort(),
+      topicsBySubject,
     };
   },
   async questionCountsBySubject(exam) {
