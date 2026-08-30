@@ -18,20 +18,15 @@ export default async function PracticePage({
   // ?exam=AI%20GENERATED lets students practise imported AI questions.
   const exam = EXAMS.includes(examParam as Exam) ? (examParam as Exam) : "JAMB";
 
-  const [counts, questions] = await Promise.all([
+  const [counts, facets] = await Promise.all([
     repo.questionCountsBySubject(exam),
-    repo.listQuestions({ exam, onlyActive: true, limit: 10000 }),
+    repo.questionFacets(exam),
   ]);
   const countBySubject = new Map(counts.map((item) => [item.subject, item.count]));
   const configuredSubjects = SUBJECTS_BY_EXAM[exam] ?? [];
   const subjects = [...new Set([...configuredSubjects, ...counts.map((item) => item.subject)])];
   const subjectCounts = subjects.map((subject) => ({ subject, count: countBySubject.get(subject) ?? 0 }));
-  const topicsBySubject: Record<string, string[]> = {};
-  for (const question of questions.rows) {
-    const topics = topicsBySubject[question.subject] ?? [];
-    if (!topics.includes(question.topic)) topics.push(question.topic);
-    topicsBySubject[question.subject] = topics;
-  }
+  const topicsBySubject: Record<string, string[]> = facets.topicsBySubject ?? {};
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
