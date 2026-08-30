@@ -1,6 +1,7 @@
 import "server-only";
 import fs from "node:fs";
 import fsp from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import crypto from "node:crypto";
 import bcrypt from "bcryptjs";
@@ -39,7 +40,12 @@ interface DB {
   settings: AppSettings;
 }
 
-const DATA_DIR = process.env.PREPAI_DATA_DIR || path.join(process.cwd(), "data");
+// Vercel (and most serverless hosts) ship a read-only filesystem for the
+// project root. Write to the OS temp directory instead so the local driver
+// keeps working in production without Supabase. (/tmp is writable everywhere.)
+const DATA_DIR =
+  process.env.PREPAI_DATA_DIR ||
+  (process.env.VERCEL === "1" ? path.join(os.tmpdir(), "prepai-data") : path.join(process.cwd(), "data"));
 const DB_FILE = path.join(DATA_DIR, "db.json");
 
 const uid = () => crypto.randomUUID();

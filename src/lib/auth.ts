@@ -64,7 +64,14 @@ async function getGuestProfile(): Promise<Profile> {
 function secret() {
   if (process.env.AUTH_SECRET) return process.env.AUTH_SECRET;
   if (process.env.NODE_ENV !== "production") return "prepai-dev-secret-change-me";
-  throw new Error("AUTH_SECRET must be configured in production.");
+  // In production without AUTH_SECRET, generate an ephemeral per-process secret
+  // so auth doesn't hard-crash. Set AUTH_SECRET for session persistence across
+  // restarts — otherwise every deploy invalidates existing sessions.
+  if (!process.env.__AUTH_SECRET_FALLBACK) {
+    process.env.__AUTH_SECRET_FALLBACK = crypto.randomBytes(32).toString("hex");
+  }
+  console.warn("[auth] AUTH_SECRET not set — using an ephemeral signing key. Set AUTH_SECRET in your environment for persistent sessions.");
+  return process.env.__AUTH_SECRET_FALLBACK;
 }
 
 function sign(payload: string) {
