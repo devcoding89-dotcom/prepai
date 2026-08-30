@@ -13,8 +13,8 @@ export function Logo({ className, mark = true }: { className?: string; mark?: bo
           </svg>
         </span>
       )}
-      <span className="text-[19px] font-extrabold tracking-tight text-ink-950">
-        Prep<span className="text-brand-600">AI</span>
+      <span className="text-[19px] font-black tracking-tight text-ink-950">
+        PREP <span className="text-brand-600">CLASS</span>
       </span>
     </Link>
   );

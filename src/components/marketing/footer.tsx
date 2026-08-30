@@ -73,7 +73,7 @@ export function MarketingFooter() {
 
         <div className="mt-12 flex flex-col items-center justify-between gap-3 border-t border-ink-200 pt-6 sm:flex-row">
           <p className="text-xs text-ink-500">
-            © {new Date().getFullYear()} PrepAI. Built for Nigerian students.
+            © {new Date().getFullYear()} PREP CLASS. Built for Nigerian students.
           </p>
           <p className="text-xs text-ink-400">
             Not affiliated with JAMB, WAEC or NECO. Past questions are used for study purposes.

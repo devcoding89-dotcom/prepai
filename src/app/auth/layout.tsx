@@ -11,7 +11,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           <div className="w-full max-w-sm">{children}</div>
         </div>
         <p className="text-center text-xs text-ink-400">
-          © {new Date().getFullYear()} PrepAI ·{" "}
+          © {new Date().getFullYear()} PREP CLASS ·{" "}
           <Link href="/legal/terms" className="hover:text-ink-600">Terms</Link> ·{" "}
           <Link href="/legal/privacy" className="hover:text-ink-600">Privacy</Link>
         </p>

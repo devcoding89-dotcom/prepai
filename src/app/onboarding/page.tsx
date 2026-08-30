@@ -49,7 +49,7 @@ export default async function OnboardingPage() {
             ))}
           </ul>
           <form action={continueToApp} className="mt-6">
-            <Button type="submit" size="lg" className="w-full">Continue to PrepAI <ArrowRight className="size-4" /></Button>
+            <Button type="submit" size="lg" className="w-full">Continue to PREP CLASS <ArrowRight className="size-4" /></Button>
           </form>
         </div>
       </div>

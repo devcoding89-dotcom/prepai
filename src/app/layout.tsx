@@ -10,8 +10,8 @@ const SITE = process.env.NEXT_PUBLIC_SITE_URL || "https://prepai.ng";
 export const metadata: Metadata = {
   metadataBase: new URL(SITE),
   title: {
-    default: "PrepAI — Pass JAMB, WAEC & NECO on Your First Try",
-    template: "%s · PrepAI",
+    default: "PREP CLASS — Pass JAMB, WAEC & NECO on Your First Try",
+    template: "%s · PREP CLASS",
   },
   description:
     "Practice real CBT past questions for JAMB, WAEC and NECO. Get an AI weakness report after every session and study the exact textbook chapter you need. ₦1,000/month.",
@@ -23,21 +23,22 @@ export const metadata: Metadata = {
     "CBT practice Nigeria",
     "AI study app Nigeria",
     "JAMB past questions and answers",
+    "PREP CLASS",
   ],
-  authors: [{ name: "PrepAI" }],
+  authors: [{ name: "PREP CLASS" }],
   openGraph: {
     type: "website",
     locale: "en_NG",
     url: SITE,
-    siteName: "PrepAI",
-    title: "PrepAI — Pass JAMB, WAEC & NECO on Your First Try",
+    siteName: "PREP CLASS",
+    title: "PREP CLASS — Pass JAMB, WAEC & NECO on Your First Try",
     description:
       "Real CBT practice + AI weakness reports + the exact textbook chapter to study. Built for Nigerian students.",
-    images: [{ url: "/og.svg", width: 1200, height: 630, alt: "PrepAI" }],
+    images: [{ url: "/og.svg", width: 1200, height: 630, alt: "PREP CLASS" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "PrepAI — Pass JAMB, WAEC & NECO on Your First Try",
+    title: "PREP CLASS — Pass JAMB, WAEC & NECO on Your First Try",
     description: "Real CBT practice + AI weakness reports + recommended textbook chapters.",
     images: ["/og.svg"],
   },

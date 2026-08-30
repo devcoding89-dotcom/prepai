@@ -106,7 +106,7 @@ export interface Repo {
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
-  site_name: "PrepAI",
+  site_name: "PREP CLASS",
   price_kobo: 100000,
   currency: "NGN",
   free_questions_per_day: 10,

@@ -17,7 +17,7 @@ export function AppMockup({ className }: { className?: string }) {
           <span className="size-2.5 rounded-full bg-amber-400" />
           <span className="size-2.5 rounded-full bg-emerald-400" />
           <span className="ml-3 rounded-md bg-white px-2.5 py-1 text-[10px] font-medium text-ink-400 ring-1 ring-ink-200">
-            prepai.ng/practice/session
+            prepclass.ng/practice/session
           </span>
         </div>
 

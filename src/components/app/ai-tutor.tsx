@@ -114,7 +114,7 @@ export function AiTutor({ exam }: { exam: string | null }) {
             <Sparkles className="size-5" />
           </span>
           <div>
-            <h2 className="text-sm font-bold text-ink-950">PrepAI Tutor</h2>
+            <h2 className="text-sm font-bold text-ink-950">PREP CLASS AI Tutor</h2>
             <p className="text-xs text-ink-500">Ask for an explanation, example, or revision tip.</p>
           </div>
         </div>
