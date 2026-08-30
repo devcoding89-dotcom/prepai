@@ -11,6 +11,8 @@ if (typeof (globalThis as { WebSocket?: unknown }).WebSocket === "undefined") {
 
 import type {
   AppSettings,
+  BattleParticipant,
+  BattleRoom,
   Bookmark,
   Payment,
   PracticeSession,
@@ -382,5 +384,48 @@ export const supabaseRepo: Repo = {
     const next = { ...current, ...patch };
     await admin().from(T("app_settings")).upsert({ id: SETTINGS_ID, ...next });
     return next;
+  },
+
+  // ---------------- battle rooms ----------------
+  async createBattleRoom(room) {
+    const res = await admin().from(T("battle_rooms")).insert(room).select().single();
+    return unwrap(res, "createBattleRoom") as BattleRoom;
+  },
+  async getBattleRoom(id) {
+    const { data } = await admin().from(T("battle_rooms")).select("*").eq("id", id).maybeSingle();
+    return (data as BattleRoom) ?? null;
+  },
+  async getBattleRoomByCode(code) {
+    const { data } = await admin()
+      .from(T("battle_rooms"))
+      .select("*")
+      .eq("code", code.toUpperCase())
+      .neq("status", "finished")
+      .maybeSingle();
+    return (data as BattleRoom) ?? null;
+  },
+  async updateBattleRoom(id, patch) {
+    const res = await admin().from(T("battle_rooms")).update(patch).eq("id", id).select().maybeSingle();
+    return unwrap(res, "updateBattleRoom") as BattleRoom;
+  },
+  async addBattleParticipant(p) {
+    const res = await admin().from(T("battle_participants")).insert(p).select().single();
+    return unwrap(res, "addBattleParticipant") as BattleParticipant;
+  },
+  async getBattleParticipant(id) {
+    const { data } = await admin().from(T("battle_participants")).select("*").eq("id", id).maybeSingle();
+    return (data as BattleParticipant) ?? null;
+  },
+  async updateBattleParticipant(id, patch) {
+    const res = await admin().from(T("battle_participants")).update(patch).eq("id", id).select().maybeSingle();
+    return unwrap(res, "updateBattleParticipant") as BattleParticipant;
+  },
+  async listBattleParticipants(roomId) {
+    const res = await admin()
+      .from(T("battle_participants"))
+      .select("*")
+      .eq("room_id", roomId)
+      .order("correct_count", { ascending: false });
+    return (unwrap(res, "listBattleParticipants") ?? []) as BattleParticipant[];
   },
 };

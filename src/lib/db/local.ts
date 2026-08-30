@@ -7,6 +7,8 @@ import crypto from "node:crypto";
 import bcrypt from "bcryptjs";
 import type {
   AppSettings,
+  BattleParticipant,
+  BattleRoom,
   Bookmark,
   Exam,
   Payment,
@@ -37,6 +39,8 @@ interface DB {
   textbooks: TextbookChapter[];
   payments: Payment[];
   bookmarks: Bookmark[];
+  battle_rooms: BattleRoom[];
+  battle_participants: BattleParticipant[];
   settings: AppSettings;
 }
 
@@ -61,6 +65,8 @@ function emptyDB(): DB {
     textbooks: [],
     payments: [],
     bookmarks: [],
+    battle_rooms: [],
+    battle_participants: [],
     settings: { ...DEFAULT_SETTINGS },
   };
 }
@@ -102,6 +108,8 @@ function loadSync(): DB {
     if (fs.existsSync(DB_FILE)) {
       cache = JSON.parse(fs.readFileSync(DB_FILE, "utf8")) as DB;
       cache.settings = { ...DEFAULT_SETTINGS, ...cache.settings };
+      cache.battle_rooms = cache.battle_rooms || [];
+      cache.battle_participants = cache.battle_participants || [];
       let mutated = false;
       const ts = now();
       if (!cache.questions || cache.questions.length === 0) {
@@ -516,5 +524,62 @@ export const localRepo: Repo = {
       db.settings = { ...db.settings, ...patch };
       return db.settings;
     });
+  },
+
+  // ---------------- battle rooms ----------------
+  async createBattleRoom(room) {
+    return mutate((db) => {
+      const now = new Date().toISOString();
+      const full: BattleRoom = {
+        ...room,
+        id: crypto.randomUUID(),
+        created_at: now,
+        expires_at: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
+      };
+      db.battle_rooms.push(full);
+      return full;
+    });
+  },
+  async getBattleRoom(id) {
+    return loadSync().battle_rooms.find((r) => r.id === id) ?? null;
+  },
+  async getBattleRoomByCode(code) {
+    const upper = code.toUpperCase();
+    return loadSync().battle_rooms.find((r) => r.code === upper && r.status !== "finished") ?? null;
+  },
+  async updateBattleRoom(id, patch) {
+    return mutate((db) => {
+      const r = db.battle_rooms.find((x) => x.id === id);
+      if (!r) return null;
+      Object.assign(r, patch);
+      return r;
+    });
+  },
+  async addBattleParticipant(p) {
+    return mutate((db) => {
+      const full: BattleParticipant = {
+        ...p,
+        id: crypto.randomUUID(),
+        joined_at: new Date().toISOString(),
+      };
+      db.battle_participants.push(full);
+      return full;
+    });
+  },
+  async getBattleParticipant(id) {
+    return loadSync().battle_participants.find((p) => p.id === id) ?? null;
+  },
+  async updateBattleParticipant(id, patch) {
+    return mutate((db) => {
+      const p = db.battle_participants.find((x) => x.id === id);
+      if (!p) return null;
+      Object.assign(p, patch);
+      return p;
+    });
+  },
+  async listBattleParticipants(roomId) {
+    return loadSync().battle_participants
+      .filter((p) => p.room_id === roomId)
+      .sort((a, b) => b.correct_count - a.correct_count || a.joined_at.localeCompare(b.joined_at));
   },
 };

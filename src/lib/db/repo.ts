@@ -1,5 +1,7 @@
 import type {
   AppSettings,
+  BattleParticipant,
+  BattleRoom,
   Bookmark,
   Difficulty,
   Exam,
@@ -104,6 +106,16 @@ export interface Repo {
   // settings
   getSettings(): Promise<AppSettings>;
   updateSettings(patch: Partial<AppSettings>): Promise<AppSettings>;
+
+  // battle rooms
+  createBattleRoom(room: Omit<BattleRoom, "id" | "created_at" | "expires_at">): Promise<BattleRoom>;
+  getBattleRoom(id: string): Promise<BattleRoom | null>;
+  getBattleRoomByCode(code: string): Promise<BattleRoom | null>;
+  updateBattleRoom(id: string, patch: Partial<BattleRoom>): Promise<BattleRoom | null>;
+  addBattleParticipant(p: Omit<BattleParticipant, "id" | "joined_at">): Promise<BattleParticipant>;
+  getBattleParticipant(id: string): Promise<BattleParticipant | null>;
+  updateBattleParticipant(id: string, patch: Partial<BattleParticipant>): Promise<BattleParticipant | null>;
+  listBattleParticipants(roomId: string): Promise<BattleParticipant[]>;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {

@@ -15,6 +15,7 @@ import {
   Shield,
   Sparkles,
   Bot,
+  Swords,
   X,
 } from "lucide-react";
 import { Logo } from "@/components/logo";
@@ -26,6 +27,7 @@ import { logoutAction } from "@/app/auth/actions";
 const nav = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/practice", label: "Practice", icon: ClipboardList },
+  { href: "/battle", label: "Battle Room", icon: Swords },
   { href: "/reports", label: "AI Reports", icon: Sparkles },
   { href: "/ai-tutor", label: "AI Tutor", icon: Bot },
   { href: "/sessions", label: "History", icon: BarChart3 },
@@ -33,7 +35,7 @@ const nav = [
   { href: "/billing", label: "Subscription", icon: CreditCard },
 ];
 
-const mobileNav = nav.slice(0, 5);
+const mobileNav = [nav[0], nav[1], nav[2], nav[3], nav[4]];
 
 function NavItem({ href, label, icon: Icon, active, onClick }: {
   href: string; label: string; icon: typeof LayoutDashboard; active: boolean; onClick?: () => void;

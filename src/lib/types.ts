@@ -253,3 +253,47 @@ export const SUBJECTS_BY_EXAM: Record<Exam, string[]> = {
 };
 
 export const LETTERS = ["A", "B", "C", "D", "E"];
+
+// ---------------------------------------------------------------------------
+// Battle Room (multiplayer)
+// ---------------------------------------------------------------------------
+
+export type BattleRoomStatus = "waiting" | "active" | "finished";
+
+export interface BattleRoom {
+  id: string;
+  /** 6-character alphanumeric join code, e.g. "PX7K2M" */
+  code: string;
+  host_user_id: string;
+  host_name: string;
+  exam: Exam;
+  subjects: string[];
+  question_ids: string[];
+  mode: "quick" | "standard";
+  /** Total time for the battle in seconds — set by the host */
+  duration_seconds: number;
+  status: BattleRoomStatus;
+  max_participants: number;
+  created_at: string;
+  started_at: string | null;
+  finished_at: string | null;
+  /** Auto-cleanup: room expires 2 hours after creation */
+  expires_at: string;
+}
+
+export interface BattleParticipant {
+  id: string;
+  room_id: string;
+  /** null for guest players who joined without an account */
+  user_id: string | null;
+  display_name: string;
+  is_host: boolean;
+  /** Map of questionId → selected option letter ("A", "B", etc.) */
+  answers: Record<string, string>;
+  score_percent: number;
+  correct_count: number;
+  total_answered: number;
+  finished: boolean;
+  joined_at: string;
+  finished_at: string | null;
+}
