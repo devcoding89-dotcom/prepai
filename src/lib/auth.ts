@@ -224,7 +224,10 @@ export async function signUp(input: {
           },
           { onConflict: "id" },
         );
-      if (profileError) return { ok: false, error: "Account created, but your profile could not be created. Please try again." };
+      if (profileError) {
+        console.error("[auth:signUp] Profile upsert failed:", profileError.message, profileError);
+        return { ok: false, error: `Account created, but your profile could not be set up. Details: ${profileError.message}` };
+      }
       profile = await repo.getProfile(data.user.id);
     }
     await setSessionCookie(data.user.id);
@@ -288,7 +291,10 @@ export async function signIn(email: string, password: string): Promise<AuthResul
             },
             { onConflict: "id" },
           );
-        if (profileError) return { ok: false, error: "Your account exists, but its profile is not ready. Please contact the administrator." };
+        if (profileError) {
+          console.error("[auth:signIn] Profile upsert failed:", profileError.message, profileError);
+          return { ok: false, error: `Your account exists, but its profile could not be set up. Details: ${profileError.message}` };
+        }
         profile = await repo.getProfile(data.user.id);
       }
       if (!profile) return { ok: false, error: "Your account profile is not ready. Please try again." };
