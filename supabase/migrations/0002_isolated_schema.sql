@@ -171,6 +171,46 @@ create table if not exists prepai.app_settings (
 
 insert into prepai.app_settings (id) values ('singleton') on conflict (id) do nothing;
 
+-- ----------------------------------------------------------- battle_rooms
+create table if not exists prepai.battle_rooms (
+  id uuid primary key default gen_random_uuid(),
+  code text not null,
+  host_user_id text not null,
+  host_name text not null,
+  exam text not null check (exam in ('JAMB', 'WAEC', 'NECO', 'AI GENERATED')),
+  subjects text[] not null default '{}',
+  question_ids text[] not null default '{}',
+  mode text not null default 'quick' check (mode in ('quick', 'standard')),
+  duration_seconds int not null default 900,
+  status text not null default 'waiting' check (status in ('waiting', 'active', 'finished')),
+  max_participants int not null default 30,
+  created_at timestamptz not null default now(),
+  started_at timestamptz,
+  finished_at timestamptz,
+  expires_at timestamptz not null default (now() + interval '2 hours')
+);
+
+create index if not exists idx_br_code on prepai.battle_rooms (code);
+create index if not exists idx_br_status on prepai.battle_rooms (status);
+
+-- ----------------------------------------------------- battle_participants
+create table if not exists prepai.battle_participants (
+  id uuid primary key default gen_random_uuid(),
+  room_id uuid not null references prepai.battle_rooms on delete cascade,
+  user_id text,
+  display_name text not null,
+  is_host boolean not null default false,
+  answers jsonb not null default '{}'::jsonb,
+  score_percent int not null default 0,
+  correct_count int not null default 0,
+  total_answered int not null default 0,
+  finished boolean not null default false,
+  joined_at timestamptz not null default now(),
+  finished_at timestamptz
+);
+
+create index if not exists idx_bp_room on prepai.battle_participants (room_id);
+
 -- ============================================================================
 -- Access
 -- PrepAI reaches Postgres only through the server using the service_role key,
@@ -192,6 +232,8 @@ alter table prepai.textbooks         enable row level security;
 alter table prepai.bookmarks         enable row level security;
 alter table prepai.payments          enable row level security;
 alter table prepai.app_settings      enable row level security;
+alter table prepai.battle_rooms       enable row level security;
+alter table prepai.battle_participants enable row level security;
 
 -- ============================================================================
 -- Storage bucket for textbook files (safe to run on a shared project)

@@ -1,4 +1,3 @@
-import { notFound } from "next/navigation";
 import { repo } from "@/lib/db";
 import { BattleLobby } from "@/components/app/battle-lobby";
 
@@ -11,25 +10,36 @@ export default async function BattleLobbyPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const room = await repo.getBattleRoom(id);
-  if (!room) notFound();
+  let room = null;
+  let participants: Awaited<ReturnType<typeof repo.listBattleParticipants>> = [];
 
-  const participants = await repo.listBattleParticipants(id);
+  try {
+    room = await repo.getBattleRoom(id);
+    if (room) {
+      participants = await repo.listBattleParticipants(id);
+    }
+  } catch (err) {
+    console.error("Error loading battle room lobby server-side:", err);
+  }
 
   return (
     <BattleLobby
       roomId={id}
-      initialRoom={{
-        id: room.id,
-        code: room.code,
-        exam: room.exam,
-        subjects: room.subjects,
-        mode: room.mode,
-        duration_seconds: room.duration_seconds,
-        status: room.status,
-        host_name: room.host_name,
-        max_participants: room.max_participants,
-      }}
+      initialRoom={
+        room
+          ? {
+              id: room.id,
+              code: room.code,
+              exam: room.exam,
+              subjects: room.subjects,
+              mode: room.mode,
+              duration_seconds: room.duration_seconds,
+              status: room.status,
+              host_name: room.host_name,
+              max_participants: room.max_participants,
+            }
+          : null
+      }
       initialParticipants={participants.map((p) => ({
         id: p.id,
         display_name: p.display_name,

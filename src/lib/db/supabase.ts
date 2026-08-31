@@ -392,56 +392,73 @@ export const supabaseRepo: Repo = {
     try {
       const res = await admin().from(T("battle_rooms")).insert(room).select().single();
       return unwrap(res, "createBattleRoom") as BattleRoom;
-    } catch {
+    } catch (e) {
+      console.error("[supabase:createBattleRoom]", e);
       return localRepo.createBattleRoom(room);
     }
   },
   async getBattleRoom(id) {
     try {
-      const { data } = await admin().from(T("battle_rooms")).select("*").eq("id", id).maybeSingle();
+      const { data, error } = await admin().from(T("battle_rooms")).select("*").eq("id", id).maybeSingle();
+      if (error) console.error("[supabase:getBattleRoom]", error);
       if (data) return data as BattleRoom;
-    } catch {}
+    } catch (e) {
+      console.error("[supabase:getBattleRoom]", e);
+    }
     return localRepo.getBattleRoom(id);
   },
   async getBattleRoomByCode(code) {
     try {
-      const { data } = await admin()
+      const { data, error } = await admin()
         .from(T("battle_rooms"))
         .select("*")
         .eq("code", code.toUpperCase())
         .neq("status", "finished")
         .maybeSingle();
+      if (error) console.error("[supabase:getBattleRoomByCode]", error);
       if (data) return data as BattleRoom;
-    } catch {}
+    } catch (e) {
+      console.error("[supabase:getBattleRoomByCode]", e);
+    }
     return localRepo.getBattleRoomByCode(code);
   },
   async updateBattleRoom(id, patch) {
     try {
       const res = await admin().from(T("battle_rooms")).update(patch).eq("id", id).select().maybeSingle();
+      if (res.error) console.error("[supabase:updateBattleRoom]", res.error);
       if (res.data) return unwrap(res, "updateBattleRoom") as BattleRoom;
-    } catch {}
+    } catch (e) {
+      console.error("[supabase:updateBattleRoom]", e);
+    }
     return localRepo.updateBattleRoom(id, patch);
   },
   async addBattleParticipant(p) {
     try {
       const res = await admin().from(T("battle_participants")).insert(p).select().single();
       return unwrap(res, "addBattleParticipant") as BattleParticipant;
-    } catch {
+    } catch (e) {
+      console.error("[supabase:addBattleParticipant]", e);
       return localRepo.addBattleParticipant(p);
     }
   },
   async getBattleParticipant(id) {
     try {
-      const { data } = await admin().from(T("battle_participants")).select("*").eq("id", id).maybeSingle();
+      const { data, error } = await admin().from(T("battle_participants")).select("*").eq("id", id).maybeSingle();
+      if (error) console.error("[supabase:getBattleParticipant]", error);
       if (data) return data as BattleParticipant;
-    } catch {}
+    } catch (e) {
+      console.error("[supabase:getBattleParticipant]", e);
+    }
     return localRepo.getBattleParticipant(id);
   },
   async updateBattleParticipant(id, patch) {
     try {
       const res = await admin().from(T("battle_participants")).update(patch).eq("id", id).select().maybeSingle();
+      if (res.error) console.error("[supabase:updateBattleParticipant]", res.error);
       if (res.data) return unwrap(res, "updateBattleParticipant") as BattleParticipant;
-    } catch {}
+    } catch (e) {
+      console.error("[supabase:updateBattleParticipant]", e);
+    }
     return localRepo.updateBattleParticipant(id, patch);
   },
   async listBattleParticipants(roomId) {
@@ -451,8 +468,11 @@ export const supabaseRepo: Repo = {
         .select("*")
         .eq("room_id", roomId)
         .order("correct_count", { ascending: false });
-      if (res.data && res.data.length > 0) return unwrap(res, "listBattleParticipants") as BattleParticipant[];
-    } catch {}
+      if (res.error) console.error("[supabase:listBattleParticipants]", res.error);
+      if (res.data) return unwrap(res, "listBattleParticipants") as BattleParticipant[];
+    } catch (e) {
+      console.error("[supabase:listBattleParticipants]", e);
+    }
     return localRepo.listBattleParticipants(roomId);
   },
 };

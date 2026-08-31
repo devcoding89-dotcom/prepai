@@ -38,20 +38,22 @@ interface Participant {
 
 interface Props {
   roomId: string;
-  initialRoom: RoomData;
-  initialParticipants: Participant[];
+  initialRoom?: RoomData | null;
+  initialParticipants?: Participant[];
 }
 
 export function BattleLobby({
   roomId,
-  initialRoom,
-  initialParticipants,
+  initialRoom = null,
+  initialParticipants = [],
 }: Props) {
   const router = useRouter();
-  const [room, setRoom] = useState<RoomData>(initialRoom);
+  const [room, setRoom] = useState<RoomData | null>(initialRoom);
   const [participants, setParticipants] = useState<Participant[]>(initialParticipants);
   const [copied, setCopied] = useState(false);
   const [starting, setStarting] = useState(false);
+  const [loading, setLoading] = useState(!initialRoom);
+  const [roomNotFound, setRoomNotFound] = useState(false);
   const [error, setError] = useState("");
 
   const participantId =
@@ -67,12 +69,19 @@ export function BattleLobby({
 
   // Poll status every 2 seconds
   useEffect(() => {
+    let mounted = true;
     const poll = async () => {
       try {
         const res = await fetch(`/api/battle/${roomId}/status`);
-        if (!res.ok) return;
+        if (!res.ok) {
+          if (res.status === 404 && mounted) {
+            setRoomNotFound(true);
+          }
+          return;
+        }
         const data = await res.json();
-        if (data.room) {
+        if (mounted && data.room) {
+          setRoomNotFound(false);
           setRoom(data.room);
           setParticipants(data.participants || []);
 
@@ -84,15 +93,21 @@ export function BattleLobby({
         }
       } catch (err) {
         console.error("Poll error:", err);
+      } finally {
+        if (mounted) setLoading(false);
       }
     };
 
+    poll();
     const timer = setInterval(poll, 2000);
-    return () => clearInterval(timer);
+    return () => {
+      mounted = false;
+      clearInterval(timer);
+    };
   }, [roomId, router]);
 
   const copyCode = () => {
-    if (typeof navigator !== "undefined") {
+    if (typeof navigator !== "undefined" && room) {
       navigator.clipboard.writeText(room.code);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
@@ -100,6 +115,7 @@ export function BattleLobby({
   };
 
   const shareRoom = () => {
+    if (!room) return;
     if (typeof navigator !== "undefined" && navigator.share) {
       navigator.share({
         title: `Join my PrepClass CBT Battle: ${room.code}`,
@@ -134,6 +150,30 @@ export function BattleLobby({
       setStarting(false);
     }
   };
+
+  if (loading && !room) {
+    return (
+      <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4 text-center">
+        <Loader2 className="size-10 animate-spin text-brand-600" />
+        <p className="text-sm font-bold text-ink-700">Connecting to Battle Room Lobby...</p>
+      </div>
+    );
+  }
+
+  if (roomNotFound || !room) {
+    return (
+      <div className="mx-auto max-w-md rounded-2xl border border-rose-200 bg-rose-50 p-8 text-center text-rose-800">
+        <AlertCircle className="mx-auto size-10 text-rose-600" />
+        <h2 className="mt-3 text-lg font-bold">Battle Room Not Found</h2>
+        <p className="mt-1.5 text-xs text-rose-700">
+          This battle room may have expired, already finished, or was created before the database was migrated.
+        </p>
+        <Button className="mt-5 w-full font-bold" onClick={() => router.push("/battle")}>
+          Return to Battle Arena Hub
+        </Button>
+      </div>
+    );
+  }
 
   const durationMin = Math.round(room.duration_seconds / 60);
 

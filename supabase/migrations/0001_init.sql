@@ -20,10 +20,18 @@ create table if not exists public.profiles (
   updated_at timestamptz not null default now()
 );
 
+alter table public.profiles add column if not exists full_name text;
+alter table public.profiles add column if not exists role text not null default 'student';
+alter table public.profiles add column if not exists target_exam text;
+alter table public.profiles add column if not exists avatar_url text;
+alter table public.profiles add column if not exists subscription_status text not null default 'inactive';
+alter table public.profiles add column if not exists subscription_expires_at timestamptz;
+alter table public.profiles add column if not exists exam_date date;
+
 -- --------------------------------------------------------------- questions
 create table if not exists public.questions (
   id uuid primary key default gen_random_uuid(),
-  exam text not null check (exam in ('JAMB', 'WAEC', 'NECO')),
+  exam text not null check (exam in ('JAMB', 'WAEC', 'NECO', 'AI GENERATED')),
   subject text not null,
   topic text not null,
   question_text text not null,
@@ -36,6 +44,12 @@ create table if not exists public.questions (
   is_active boolean not null default true,
   created_at timestamptz not null default now()
 );
+
+alter table public.questions add column if not exists is_active boolean not null default true;
+alter table public.questions add column if not exists explanation text;
+alter table public.questions add column if not exists difficulty text not null default 'medium';
+alter table public.questions add column if not exists year int;
+alter table public.questions add column if not exists image_url text;
 
 create index if not exists idx_questions_exam_subject on public.questions (exam, subject);
 create index if not exists idx_questions_topic on public.questions (topic);
@@ -165,6 +179,46 @@ create table if not exists public.app_settings (
 
 insert into public.app_settings (id) values ('singleton') on conflict (id) do nothing;
 
+-- ----------------------------------------------------------- battle_rooms
+create table if not exists public.battle_rooms (
+  id uuid primary key default gen_random_uuid(),
+  code text not null,
+  host_user_id text not null,
+  host_name text not null,
+  exam text not null check (exam in ('JAMB', 'WAEC', 'NECO', 'AI GENERATED')),
+  subjects text[] not null default '{}',
+  question_ids text[] not null default '{}',
+  mode text not null default 'quick' check (mode in ('quick', 'standard')),
+  duration_seconds int not null default 900,
+  status text not null default 'waiting' check (status in ('waiting', 'active', 'finished')),
+  max_participants int not null default 30,
+  created_at timestamptz not null default now(),
+  started_at timestamptz,
+  finished_at timestamptz,
+  expires_at timestamptz not null default (now() + interval '2 hours')
+);
+
+create index if not exists idx_battle_rooms_code on public.battle_rooms (code);
+create index if not exists idx_battle_rooms_status on public.battle_rooms (status);
+
+-- ----------------------------------------------------- battle_participants
+create table if not exists public.battle_participants (
+  id uuid primary key default gen_random_uuid(),
+  room_id uuid not null references public.battle_rooms on delete cascade,
+  user_id text,
+  display_name text not null,
+  is_host boolean not null default false,
+  answers jsonb not null default '{}'::jsonb,
+  score_percent int not null default 0,
+  correct_count int not null default 0,
+  total_answered int not null default 0,
+  finished boolean not null default false,
+  joined_at timestamptz not null default now(),
+  finished_at timestamptz
+);
+
+create index if not exists idx_battle_participants_room on public.battle_participants (room_id);
+
 -- ============================================================================
 -- Auto-create a profile whenever a user signs up
 -- ============================================================================
@@ -223,6 +277,14 @@ alter table public.textbooks         enable row level security;
 alter table public.bookmarks         enable row level security;
 alter table public.payments          enable row level security;
 alter table public.app_settings      enable row level security;
+alter table public.battle_rooms       enable row level security;
+alter table public.battle_participants enable row level security;
+
+drop policy if exists "battle_rooms_read_all" on public.battle_rooms;
+create policy "battle_rooms_read_all" on public.battle_rooms for select using (true);
+
+drop policy if exists "battle_participants_read_all" on public.battle_participants;
+create policy "battle_participants_read_all" on public.battle_participants for select using (true);
 
 -- profiles ------------------------------------------------------------------
 drop policy if exists "read own profile" on public.profiles;
