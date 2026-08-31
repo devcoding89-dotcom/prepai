@@ -204,7 +204,13 @@ export async function signUp(input: {
       email_confirm: true, // pre-confirmed => no verification email
       user_metadata: { full_name: input.full_name },
     });
-    if (error || !data.user) return { ok: false, error: error?.message ?? "Could not create account." };
+    if (error || !data.user) {
+      if (error?.message?.includes("Database error creating new user")) {
+        console.error("[auth:signUp] Database error creating new user. A Postgres trigger on auth.users failed. Please run migration 0008_fix_auth_profile.sql in the Supabase SQL editor.");
+        return { ok: false, error: "Database error creating user. Please ensure migration 0008_fix_auth_profile.sql has been executed in your Supabase SQL editor." };
+      }
+      return { ok: false, error: error?.message ?? "Could not create account." };
+    }
     // Create the profile row ourselves rather than relying on a database
     // trigger — safer when the Supabase project is shared with another app.
     let profile = await repo.getProfile(data.user.id);

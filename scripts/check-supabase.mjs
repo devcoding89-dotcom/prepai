@@ -90,4 +90,21 @@ if (missing) {
     console.log(`✅ textbooks storage bucket: ${bucket.data.public ? "public" : "private"}`);
     if (!bucket.data.public) console.log("➜ Run supabase/migrations/0004_fix_textbook_storage.sql to enable public file viewing.");
   }
+
+  // Check auth signup capability
+  const testEmail = `probe_${Date.now()}@prepai.test`;
+  const authProbe = await supabase.auth.admin.createUser({
+    email: testEmail,
+    password: "Password123!",
+    email_confirm: true,
+    user_metadata: { full_name: "Auth Probe" },
+  });
+  if (authProbe.error) {
+    console.log(`\n✖ Auth new user signup: FAILED (${authProbe.error.message})`);
+    console.log("➜ Run supabase/migrations/0008_fix_auth_profile.sql in the Supabase SQL editor to fix the broken auth trigger on auth.users.");
+  } else {
+    console.log(`\n✅ Auth new user signup: OK`);
+    await supabase.auth.admin.deleteUser(authProbe.data.user.id);
+  }
 }
+

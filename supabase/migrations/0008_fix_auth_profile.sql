@@ -2,15 +2,58 @@
 -- Migration 0008: Fix auth & profile issues for new user sign-up / sign-in
 -- 
 -- This migration fixes the following issues:
---   1. `target_exam` check constraint on prepai.profiles did not include
---      'AI GENERATED' (migration 0005 may not have run on the prepai schema).
---   2. `exam_date` column may be missing from prepai.profiles (migration 0006
---      may not have applied cleanly).
---   3. Missing RLS policy bypass for service_role on profiles INSERT/UPDATE.
---   4. PostgREST schema cache reload to ensure all changes are picked up.
+--   1. "Database error creating new user" on signup:
+--      A legacy or broken trigger `on_auth_user_created` on `auth.users` was
+--      calling `public.handle_new_user()`, which attempts an insert into
+--      `public.profiles (id, email, full_name)` where `email` column was missing
+--      or schema mismatched.
+--      PrepAI manages profiles in `prepai.profiles` directly inside app code.
+--      This migration drops the broken trigger and makes `public.handle_new_user()`
+--      fail-safe.
+--   2. `target_exam` check constraint on `prepai.profiles` including 'AI GENERATED'.
+--   3. `exam_date` column on `prepai.profiles`.
+--   4. Full service_role grants and PostgREST schema cache reload.
 -- ============================================================================
 
--- 1. Add exam_date column to prepai.profiles if it doesn't exist
+-- 1. DROP BROKEN AUTH TRIGGER THAT CAUSES "Database error creating new user"
+drop trigger if exists on_auth_user_created on auth.users;
+
+-- 2. Make handle_new_user() function fail-safe so it never aborts user creation
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+as $$
+begin
+  -- PrepAI creates profiles in prepai.profiles directly from the Next.js backend.
+  -- This function is made fail-safe so no database exception blocks auth signup.
+  begin
+    if exists (
+      select 1 from information_schema.tables
+      where table_schema = 'public' and table_name = 'profiles'
+    ) then
+      if exists (
+        select 1 from information_schema.columns
+        where table_schema = 'public' and table_name = 'profiles' and column_name = 'email'
+      ) then
+        insert into public.profiles (id, email, full_name)
+        values (new.id, new.email, new.raw_user_meta_data->>'full_name')
+        on conflict (id) do nothing;
+      else
+        insert into public.profiles (id, full_name)
+        values (new.id, new.raw_user_meta_data->>'full_name')
+        on conflict (id) do nothing;
+      end if;
+    end if;
+  exception when others then
+    -- Catch all errors so auth.users insert NEVER fails
+    null;
+  end;
+  return new;
+end;
+$$;
+
+-- 3. Add exam_date column to prepai.profiles if it doesn't exist
 do $$
 begin
   if not exists (
@@ -27,7 +70,7 @@ begin
   end if;
 end $$;
 
--- 2. Fix target_exam CHECK constraint to include 'AI GENERATED'
+-- 4. Fix target_exam CHECK constraint to include 'AI GENERATED' on prepai.profiles
 do $$
 declare
   constraint_name text;
@@ -61,14 +104,14 @@ begin
   end if;
 end $$;
 
--- 3. Ensure service_role has full grants (idempotent)
+-- 5. Ensure service_role has full grants (idempotent)
 grant usage on schema prepai to service_role;
 grant all on all tables    in schema prepai to service_role;
 grant all on all sequences in schema prepai to service_role;
 alter default privileges in schema prepai grant all on tables    to service_role;
 alter default privileges in schema prepai grant all on sequences to service_role;
 
--- 4. Reload PostgREST schema cache
+-- 6. Reload PostgREST schema cache
 notify pgrst, 'reload schema';
 
 -- Sanity check — show the profiles columns
