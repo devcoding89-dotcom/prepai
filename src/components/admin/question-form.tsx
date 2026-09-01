@@ -1,8 +1,8 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useRef, useState } from "react";
 import Link from "next/link";
-import { Loader2, Save, Sparkles } from "lucide-react";
+import { Image as ImageIcon, Loader2, Save, Sparkles, Trash2, UploadCloud, ZoomIn } from "lucide-react";
 import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, Checkbox, Field, Input, Select, Textarea } from "@/components/ui/input";
 import { Button, buttonClass } from "@/components/ui/button";
@@ -24,8 +24,51 @@ export function QuestionForm({ question }: { question?: Question }) {
   const [questionText, setQuestionText] = useState(question?.question_text ?? "");
   const [options, setOptions] = useState(question?.options ?? ["", "", "", ""]);
   const [explanation, setExplanation] = useState(question?.explanation ?? "");
+  const [imageUrl, setImageUrl] = useState(question?.image_url ?? "");
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const [generationError, setGenerationError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  async function handleFileUpload(file: File) {
+    if (!file.type.startsWith("image/")) {
+      setUploadError("Please upload an image file (PNG, JPG, WEBP, or SVG).");
+      return;
+    }
+    setUploadingImage(true);
+    setUploadError(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/admin/upload", {
+        method: "POST",
+        body: formData,
+      });
+      const data = (await res.json()) as { ok?: boolean; url?: string; error?: string };
+      if (!res.ok || !data.url) throw new Error(data.error || "Failed to upload image.");
+      setImageUrl(data.url);
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : "Failed to upload diagram.");
+    } finally {
+      setUploadingImage(false);
+    }
+  }
+
+  function handlePaste(e: React.ClipboardEvent) {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.startsWith("image/")) {
+        const file = items[i].getAsFile();
+        if (file) {
+          e.preventDefault();
+          void handleFileUpload(file);
+          break;
+        }
+      }
+    }
+  }
 
   async function generateQuestion() {
     if (!subject || !topic) {
@@ -40,7 +83,10 @@ export function QuestionForm({ question }: { question?: Question }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ exam, subject, topic, difficulty }),
       });
-      const data = (await response.json()) as { question?: { question_text: string; options: string[]; correct_answer: string; explanation: string }; error?: string };
+      const data = (await response.json()) as {
+        question?: { question_text: string; options: string[]; correct_answer: string; explanation: string };
+        error?: string;
+      };
       if (!response.ok || !data.question) throw new Error(data.error || "Could not generate a question.");
       setQuestionText(data.question.question_text);
       setOptions(data.question.options);
@@ -55,8 +101,13 @@ export function QuestionForm({ question }: { question?: Question }) {
   }
 
   return (
-    <form action={action} className="grid gap-5 lg:grid-cols-[1.6fr_1fr] lg:items-start">
+    <form
+      action={action}
+      onPaste={handlePaste}
+      className="grid gap-5 lg:grid-cols-[1.6fr_1fr] lg:items-start"
+    >
       {question && <input type="hidden" name="id" value={question.id} />}
+      <input type="hidden" name="image_url" value={imageUrl} />
 
       <div className="space-y-5">
         {state.error && <Alert>{state.error}</Alert>}
@@ -64,20 +115,100 @@ export function QuestionForm({ question }: { question?: Question }) {
 
         <Card>
           <CardHeader>
-            <CardTitle>Question</CardTitle>
+            <CardTitle>Question Content</CardTitle>
           </CardHeader>
           <CardBody className="space-y-4">
-            <Field label="Question text" htmlFor="question_text">
+            <Field label="Question text" htmlFor="question_text" hint="You can paste a screenshot directly with Ctrl+V">
               <Textarea
                 id="question_text"
                 name="question_text"
                 required
                 value={questionText}
                 onChange={(event) => setQuestionText(event.target.value)}
-                placeholder="e.g. Solve for x: x² − 5x + 6 = 0"
+                placeholder="e.g. In the diagram below, find the value of angle x in degrees..."
                 className="min-h-28"
               />
             </Field>
+
+            {/* Math / Geometry Diagram Attachment Section */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-sm font-semibold text-ink-800">
+                  Question Diagram / Drawing (Optional)
+                </label>
+                <span className="text-[11px] text-ink-400">
+                  Angle diagrams, geometry, graphs, etc.
+                </span>
+              </div>
+
+              {uploadError && <Alert className="mb-2">{uploadError}</Alert>}
+
+              {imageUrl ? (
+                <div className="relative overflow-hidden rounded-xl border border-brand-200 bg-brand-50/30 p-3">
+                  <div className="flex items-center justify-between pb-2 border-b border-brand-100">
+                    <span className="text-xs font-bold text-brand-900 flex items-center gap-1.5">
+                      <ImageIcon className="size-3.5 text-brand-600" /> Attached Diagram
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setImageUrl("")}
+                      className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-50"
+                    >
+                      <Trash2 className="size-3.5" /> Remove
+                    </button>
+                  </div>
+                  <div className="mt-3 flex justify-center bg-white rounded-lg p-2 border border-ink-100">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={imageUrl}
+                      alt="Question diagram preview"
+                      className="max-h-56 max-w-full object-contain rounded"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    if (e.dataTransfer.files?.[0]) void handleFileUpload(e.dataTransfer.files[0]);
+                  }}
+                  onClick={() => fileInputRef.current?.click()}
+                  className={cn(
+                    "group flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-ink-200 bg-ink-50/40 p-5 text-center cursor-pointer transition-all hover:border-brand-400 hover:bg-brand-50/30",
+                    uploadingImage && "pointer-events-none opacity-60",
+                  )}
+                >
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      if (e.target.files?.[0]) void handleFileUpload(e.target.files[0]);
+                    }}
+                  />
+                  {uploadingImage ? (
+                    <div className="flex flex-col items-center gap-2">
+                      <Loader2 className="size-6 animate-spin text-brand-600" />
+                      <p className="text-xs font-semibold text-brand-700">Uploading diagram...</p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="grid size-10 place-items-center rounded-xl bg-white text-ink-600 shadow-2xs group-hover:text-brand-600">
+                        <UploadCloud className="size-5" />
+                      </div>
+                      <p className="mt-2 text-xs font-bold text-ink-800 group-hover:text-brand-900">
+                        Click to upload diagram, drag & drop, or press Ctrl+V to paste screenshot
+                      </p>
+                      <p className="mt-0.5 text-[11px] text-ink-400">
+                        Supports PNG, JPG, WEBP, and SVG (Up to 12MB)
+                      </p>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
 
             <div>
               <p className="mb-2 text-sm font-medium text-ink-800">Options — tick the correct one</p>
@@ -100,81 +231,82 @@ export function QuestionForm({ question }: { question?: Question }) {
                     >
                       {letter}
                     </button>
-                    <Input
-                      name={`option_${i + 1}`}
+                    <input
+                      name={`option_${letter.toLowerCase()}`}
+                      required
                       value={options[i] ?? ""}
-                      onChange={(event) => setOptions((current) => current.map((option, index) => (index === i ? event.target.value : option)))}
+                      onChange={(event) => {
+                        const next = [...options];
+                        next[i] = event.target.value;
+                        setOptions(next);
+                      }}
                       placeholder={`Option ${letter}`}
-                      required={i < 2}
-                      className="border-0 focus:ring-0"
+                      className="h-10 flex-1 rounded-lg border border-ink-200 bg-white px-3 text-sm text-ink-900 focus:border-brand-500 focus:outline-none"
                     />
                   </div>
                 ))}
               </div>
-              <input type="hidden" name="correct_answer" value={answer} />
-              <div className="mt-2 flex gap-2">
-                {optionCount < 5 && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setOptions((current) => [...current, ""]);
-                      setOptionCount((c) => c + 1);
-                    }}
-                    className="text-[12px] font-semibold text-brand-700 hover:underline"
-                  >
-                    + Add option
-                  </button>
-                )}
-                {optionCount > 2 && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setOptions((current) => current.slice(0, -1));
-                      setOptionCount((c) => c - 1);
-                    }}
-                    className="text-[12px] font-semibold text-ink-400 hover:underline"
-                  >
-                    − Remove last
-                  </button>
-                )}
+
+              <div className="mt-3 flex items-center justify-between text-xs">
+                <span className="text-ink-500">Correct answer: <strong>Option {answer}</strong></span>
+                <div className="flex gap-2">
+                  {optionCount < 5 && (
+                    <button
+                      type="button"
+                      onClick={() => setOptionCount((prev) => Math.min(5, prev + 1))}
+                      className="font-semibold text-brand-700 hover:underline"
+                    >
+                      + Add Option E
+                    </button>
+                  )}
+                  {optionCount > 2 && (
+                    <button
+                      type="button"
+                      onClick={() => setOptionCount((prev) => Math.max(2, prev - 1))}
+                      className="font-semibold text-ink-400 hover:underline"
+                    >
+                      Remove last option
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
 
-            <Field label="Explanation" htmlFor="explanation" hint="Shown to the student when reviewing the session.">
+            <Field label="Explanation (optional)" htmlFor="explanation" hint="Shown to students during test review and AI diagnosis.">
               <Textarea
                 id="explanation"
                 name="explanation"
                 value={explanation}
                 onChange={(event) => setExplanation(event.target.value)}
-                placeholder="Factorising gives (x − 2)(x − 3) = 0, so x = 2 or 3."
+                placeholder="Explain the step-by-step angle theorem or method..."
+                className="min-h-24"
               />
             </Field>
           </CardBody>
         </Card>
       </div>
 
-      <Card className="lg:sticky lg:top-6">
-        <CardHeader>
-          <CardTitle>Classification</CardTitle>
+      {/* sidebar metadata */}
+      <Card>
+        <CardHeader className="flex items-center justify-between">
+          <CardTitle>Metadata</CardTitle>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={generateQuestion}
+            loading={generating}
+            className="text-xs"
+          >
+            <Sparkles className="size-3.5 text-brand-600" />
+            AI Draft
+          </Button>
         </CardHeader>
         <CardBody className="space-y-4">
-          <div className="rounded-xl border border-brand-200 bg-brand-50/70 p-3.5">
-            <div className="flex items-start gap-2.5">
-              <Sparkles className="mt-0.5 size-4 shrink-0 text-brand-600" />
-              <div>
-                <p className="text-sm font-bold text-brand-900">AI-generated question</p>
-                <p className="mt-0.5 text-xs leading-relaxed text-brand-800">Uses the selected exam, subject and topic. Review it before saving.</p>
-              </div>
-            </div>
-            <Button type="button" variant="secondary" onClick={generateQuestion} disabled={generating} className="mt-3 w-full">
-              {generating ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
-              {generating ? "Generating..." : "Generate with AI"}
-            </Button>
-            {generationError && <p className="mt-2 text-xs font-medium text-rose-700">{generationError}</p>}
-          </div>
+          {generationError && <Alert>{generationError}</Alert>}
 
           <Field label="Exam" htmlFor="exam">
-            <Select id="exam" name="exam" value={exam} onChange={(e) => setExam(e.target.value as Exam)}>
+            <Select id="exam" name="exam" value={exam} onChange={(event) => setExam(event.target.value as Exam)}>
               {EXAMS.map((e) => (
                 <option key={e} value={e}>
                   {e}
@@ -189,8 +321,8 @@ export function QuestionForm({ question }: { question?: Question }) {
               name="subject"
               required
               list="subject-options"
-                      value={subject}
-                      onChange={(event) => setSubject(event.target.value)}
+              value={subject}
+              onChange={(event) => setSubject(event.target.value)}
               placeholder="Mathematics"
             />
             <datalist id="subject-options">
@@ -201,7 +333,14 @@ export function QuestionForm({ question }: { question?: Question }) {
           </Field>
 
           <Field label="Topic" htmlFor="topic" hint="Used by the AI report and textbook matching — keep it consistent.">
-            <Input id="topic" name="topic" required value={topic} onChange={(event) => setTopic(event.target.value)} placeholder="Quadratic Equations" />
+            <Input
+              id="topic"
+              name="topic"
+              required
+              value={topic}
+              onChange={(event) => setTopic(event.target.value)}
+              placeholder="Circle Geometry & Angles"
+            />
           </Field>
 
           <div className="grid grid-cols-2 gap-3">
@@ -217,8 +356,13 @@ export function QuestionForm({ question }: { question?: Question }) {
             </Field>
           </div>
 
-          <Field label="Image URL (optional)" htmlFor="image_url">
-            <Input id="image_url" name="image_url" defaultValue={question?.image_url ?? ""} placeholder="https://…" />
+          <Field label="Image URL / Direct Link" htmlFor="image_url_direct" hint="Auto-filled when uploading, or paste an external URL.">
+            <Input
+              id="image_url_direct"
+              value={imageUrl}
+              onChange={(e) => setImageUrl(e.target.value)}
+              placeholder="https://… or upload above"
+            />
           </Field>
 
           <label className="flex items-center gap-2.5 text-sm text-ink-700">

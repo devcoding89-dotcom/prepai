@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Pencil, Plus, Search, Trash2, Upload } from "lucide-react";
+import { Image as ImageIcon, Pencil, Plus, Search, Trash2, Upload } from "lucide-react";
 import { repo } from "@/lib/db";
 import { EXAMS, type Difficulty, type Exam } from "@/lib/types";
 import { Badge, Card, CardBody, EmptyState } from "@/components/ui/card";
@@ -21,67 +21,71 @@ export default async function AdminQuestionsPage({
     subject?: string;
     difficulty?: string;
     page?: string;
-    created?: string;
-    updated?: string;
   }>;
 }) {
-  const sp = await searchParams;
-  const page = Math.max(1, Number(sp.page) || 1);
-  const exam = (sp.exam as Exam | "ALL") || "ALL";
+  const params = await searchParams;
+  const page = Math.max(1, Number(params.page ?? 1));
+  const exam = (params.exam || undefined) as Exam | undefined;
+  const subject = params.subject || undefined;
+  const difficulty = (params.difficulty || undefined) as Difficulty | undefined;
+  const search = params.q?.trim() || undefined;
 
-  const [{ rows, total }, facets] = await Promise.all([
+  const [{ total, rows }, facets] = await Promise.all([
     repo.listQuestions({
       exam,
-      subject: sp.subject || undefined,
-      difficulty: (sp.difficulty as Difficulty) || undefined,
-      search: sp.q || undefined,
+      subject,
+      difficulty,
+      search,
       limit: PER_PAGE,
       offset: (page - 1) * PER_PAGE,
     }),
     repo.questionFacets(exam),
   ]);
+
   const pages = Math.max(1, Math.ceil(total / PER_PAGE));
+  const uniqueSubjects = (facets.subjects ?? []).sort();
 
   const qs = (patch: Record<string, string | number | undefined>) => {
     const p = new URLSearchParams();
-    const merged = { q: sp.q, exam: sp.exam, subject: sp.subject, difficulty: sp.difficulty, page: sp.page, ...patch };
+    const merged = { q: params.q, exam: params.exam, subject: params.subject, difficulty: params.difficulty, page: params.page, ...patch };
     for (const [k, v] of Object.entries(merged)) if (v) p.set(k, String(v));
     return `/admin/questions?${p.toString()}`;
   };
 
   return (
-    <div className="mx-auto max-w-6xl space-y-5">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+    <div className="mx-auto max-w-6xl space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-ink-950">Question bank</h1>
-          <p className="mt-1 text-sm text-ink-500">{total} questions match your filters.</p>
+          <h1 className="text-2xl font-extrabold tracking-tight text-ink-950">Questions</h1>
+          <p className="mt-1 text-sm text-ink-500">
+            {total} question{total === 1 ? "" : "s"} in the question bank
+          </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Link href="/admin/questions/import" className={buttonClass("outline", "sm")}>
             <Upload className="size-4" />
-            Import
+            Bulk import
           </Link>
           <Link href="/admin/questions/new" className={buttonClass("primary", "sm")}>
             <Plus className="size-4" />
-            New question
+            Add question
           </Link>
         </div>
       </div>
 
-      {(sp.created || sp.updated) && (
-        <div className="rounded-xl bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">
-          Question {sp.created ? "created" : "updated"} successfully.
-        </div>
-      )}
-
       <Card>
-        <CardBody className="pt-5">
-          <form className="grid gap-3 sm:grid-cols-[1.5fr_repeat(3,1fr)_auto]">
+        <CardBody>
+          <form method="GET" className="grid gap-3 md:grid-cols-[1.5fr_1fr_1fr_1fr_auto]">
             <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-3.5 size-4 text-ink-400" />
-              <Input name="q" defaultValue={sp.q} placeholder="Search question text or topic…" className="pl-9" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ink-400" />
+              <Input
+                name="q"
+                defaultValue={search ?? ""}
+                placeholder="Search question text or topic…"
+                className="pl-9"
+              />
             </div>
-            <Select name="exam" defaultValue={sp.exam ?? ""}>
+            <Select name="exam" defaultValue={exam ?? ""}>
               <option value="">All exams</option>
               {EXAMS.map((e) => (
                 <option key={e} value={e}>
@@ -89,44 +93,42 @@ export default async function AdminQuestionsPage({
                 </option>
               ))}
             </Select>
-            <Select name="subject" defaultValue={sp.subject ?? ""}>
+            <Select name="subject" defaultValue={subject ?? ""}>
               <option value="">All subjects</option>
-              {facets.subjects.map((s) => (
+              {uniqueSubjects.map((s) => (
                 <option key={s} value={s}>
                   {s}
                 </option>
               ))}
             </Select>
-            <Select name="difficulty" defaultValue={sp.difficulty ?? ""}>
-              <option value="">Any difficulty</option>
+            <Select name="difficulty" defaultValue={difficulty ?? ""}>
+              <option value="">All levels</option>
               <option value="easy">Easy</option>
               <option value="medium">Medium</option>
               <option value="hard">Hard</option>
             </Select>
-            <button className={buttonClass("secondary", "md")}>Filter</button>
+            <button type="submit" className={buttonClass("secondary", "md")}>
+              Filter
+            </button>
           </form>
         </CardBody>
       </Card>
 
       {rows.length === 0 ? (
-        <Card>
-          <CardBody className="pt-6">
-            <EmptyState
-              title="No questions found"
-              description="Adjust the filters, or import questions in bulk from CSV/JSON."
-              action={
-                <Link href="/admin/questions/import" className={buttonClass("primary", "md")}>
-                  Import questions
-                </Link>
-              }
-            />
-          </CardBody>
-        </Card>
+        <EmptyState
+          title="No questions found"
+          description="Try adjusting your filters, or add the first question."
+          action={
+            <Link href="/admin/questions/new" className={buttonClass("primary", "sm")}>
+              Add question
+            </Link>
+          }
+        />
       ) : (
-        <Card>
+        <Card className="overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[860px] text-left text-sm">
-              <thead className="border-b border-ink-200 bg-ink-50 text-[11px] uppercase tracking-wide text-ink-500">
+            <table className="w-full text-left text-sm">
+              <thead className="border-b border-ink-100 bg-ink-50/60 text-xs text-ink-500 uppercase">
                 <tr>
                   <th className="px-4 py-3 font-semibold">Question</th>
                   <th className="px-4 py-3 font-semibold">Exam</th>
@@ -141,10 +143,22 @@ export default async function AdminQuestionsPage({
                 {rows.map((q) => (
                   <tr key={q.id} className="hover:bg-ink-50/60">
                     <td className="max-w-md px-4 py-3">
-                      <p className="line-clamp-2 font-medium text-ink-900">{q.question_text}</p>
-                      <p className="mt-0.5 line-clamp-1 text-[11px] text-ink-400">
-                        {q.options.length} options{q.year ? ` · ${q.year}` : ""}
-                      </p>
+                      <div className="flex items-start gap-2.5">
+                        {q.image_url && (
+                          <span
+                            title="Has Diagram/Image"
+                            className="mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-md bg-brand-50 px-1.5 py-0.5 text-[10px] font-bold text-brand-700 border border-brand-200"
+                          >
+                            <ImageIcon className="size-3" /> Diagram
+                          </span>
+                        )}
+                        <div>
+                          <p className="line-clamp-2 font-medium text-ink-900">{q.question_text}</p>
+                          <p className="mt-0.5 line-clamp-1 text-[11px] text-ink-400">
+                            {q.options.length} options{q.year ? ` · ${q.year}` : ""}
+                          </p>
+                        </div>
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       <Badge tone="brand">{q.exam}</Badge>

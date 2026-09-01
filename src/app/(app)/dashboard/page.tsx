@@ -17,6 +17,7 @@ import { getDashboardData } from "@/lib/stats";
 import { Badge, Card, CardBody, CardHeader, CardTitle, EmptyState, ProgressBar, Stat } from "@/components/ui/card";
 import { LinkButton, buttonClass } from "@/components/ui/button";
 import { ScoreTrendChart } from "@/components/app/charts";
+import { DailyMotivationCard } from "@/components/app/daily-motivation-card";
 import { formatDate, formatDuration, scoreColor, timeAgo } from "@/lib/utils";
 
 export const metadata = { title: "Dashboard" };
@@ -59,6 +60,9 @@ export default async function DashboardPage() {
           Start new practice
         </LinkButton>
       </div>
+
+      {/* Daily study motivation & exam integrity card */}
+      <DailyMotivationCard streakDays={stats.streak_days} />
 
       {daysToExam != null && daysToExam >= 0 && (
         <Card className="overflow-hidden border-brand-200">

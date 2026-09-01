@@ -1,10 +1,14 @@
+import { Sparkles, ShieldAlert, Lightbulb } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getDailyMotivation, ANTI_AI_WARNINGS } from "@/lib/motivations";
 
 interface LoadingScreenProps {
   label?: string;
   sublabel?: string;
   fullPage?: boolean;
   className?: string;
+  showMotivation?: boolean;
+  showAntiAIWarning?: boolean;
 }
 
 export function LoadingScreen({
@@ -12,12 +16,16 @@ export function LoadingScreen({
   sublabel = "Preparing your smart practice workspace",
   fullPage = true,
   className,
+  showMotivation = false,
+  showAntiAIWarning = false,
 }: LoadingScreenProps) {
+  const motivation = showMotivation ? getDailyMotivation() : null;
+
   return (
     <div
       className={cn(
         "flex flex-col items-center justify-center p-6 text-center animate-fade-in",
-        fullPage ? "min-h-[70vh] w-full" : "py-12 w-full",
+        fullPage ? "min-h-[70vh] w-full" : "py-8 w-full",
         className
       )}
     >
@@ -63,8 +71,39 @@ export function LoadingScreen({
 
       {/* Animated shimmer progress line */}
       <div className="mt-5 h-1.5 w-48 overflow-hidden rounded-full bg-ink-100">
-        <div className="h-full w-full bg-gradient-to-r from-brand-500 via-violet-500 to-brand-600 rounded-full animate-shimmer" style={{ backgroundSize: '200% 100%' }} />
+        <div
+          className="h-full w-full bg-gradient-to-r from-brand-500 via-violet-500 to-brand-600 rounded-full animate-shimmer"
+          style={{ backgroundSize: "200% 100%" }}
+        />
       </div>
+
+      {/* Dynamic Motivation Card on Loading */}
+      {motivation && (
+        <div className="mt-8 max-w-md rounded-2xl border border-brand-200/80 bg-brand-50/70 p-4 text-left shadow-2xs">
+          <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-brand-700">
+            <Lightbulb className="size-3.5 text-brand-600" /> Pro Exam Tip
+          </div>
+          <p className="mt-1 text-[13px] font-bold text-ink-900">“{motivation.quote}”</p>
+          <p className="mt-1 text-[11px] text-ink-600">{motivation.tip}</p>
+        </div>
+      )}
+
+      {/* Anti-AI & Exam Integrity Warning on Loading */}
+      {showAntiAIWarning && (
+        <div className="mt-3 max-w-md rounded-2xl border border-amber-300 bg-amber-50/90 p-4 text-left shadow-2xs">
+          <div className="flex items-start gap-2.5">
+            <ShieldAlert className="size-4 shrink-0 text-amber-600 mt-0.5" />
+            <div className="space-y-1">
+              <p className="text-xs font-bold text-amber-950">
+                ⚠️ {ANTI_AI_WARNINGS.title}
+              </p>
+              <p className="text-[11px] leading-relaxed text-amber-800">
+                {ANTI_AI_WARNINGS.shortWarning} Solving with your own brain allows PrepAI to diagnose your real weak spots so you can conquer them on exam day!
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

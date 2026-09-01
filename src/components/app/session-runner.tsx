@@ -14,6 +14,7 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ImageZoomModal } from "@/components/ui/image-zoom-modal";
 import { cn, formatClock, LETTERS_SAFE } from "@/components/app/session-utils";
 import type { SafeQuestion } from "@/lib/services/practice";
 
@@ -300,6 +301,16 @@ export function SessionRunner({
           <p className="mt-4 whitespace-pre-wrap text-[17px] font-semibold leading-relaxed text-ink-950 sm:text-lg">
             {current.question_text}
           </p>
+
+          {current.image_url && (
+            <div className="mt-4 flex justify-center">
+              <ImageZoomModal
+                src={current.image_url}
+                alt="Question Diagram / Geometry"
+                caption="Click to zoom and inspect diagram details"
+              />
+            </div>
+          )}
 
           <div className="mt-5 space-y-2.5">
             {current.options.map((opt, i) => {

@@ -20,6 +20,7 @@ import { retryMistakesAction } from "@/app/(app)/practice/actions";
 import { ExplainAnswer } from "@/components/app/explain-answer";
 import { Badge, Card, CardBody, CardHeader, CardTitle, ProgressBar } from "@/components/ui/card";
 import { LinkButton, buttonClass } from "@/components/ui/button";
+import { ImageZoomModal } from "@/components/ui/image-zoom-modal";
 import { SubjectBarChart } from "@/components/app/charts";
 import { cn, formatDateTime, formatDuration } from "@/lib/utils";
 import { LETTERS } from "@/lib/types";
@@ -253,6 +254,15 @@ export default async function ReportPage({ params }: { params: Promise<{ id: str
                 </summary>
                 <div className="border-t border-ink-100 p-4">
                   <p className="text-[15px] font-semibold leading-relaxed text-ink-950">{q.question_text}</p>
+                  {q.image_url && (
+                    <div className="mt-3 flex justify-start">
+                      <ImageZoomModal
+                        src={q.image_url}
+                        alt="Question Diagram"
+                        caption="Click to zoom diagram"
+                      />
+                    </div>
+                  )}
                   <div className="mt-3 space-y-2">
                     {q.options.map((opt, oi) => {
                       const letter = LETTERS[oi];

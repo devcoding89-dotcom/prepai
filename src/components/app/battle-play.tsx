@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Card, CardBody, CardHeader, CardTitle, Badge } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { ImageZoomModal } from "@/components/ui/image-zoom-modal";
 import { LETTERS } from "@/lib/types";
 import { formatClock } from "@/lib/utils";
 
@@ -25,6 +26,7 @@ interface QuestionItem {
   options: string[];
   difficulty: string;
   year: number | null;
+  image_url?: string | null;
 }
 
 interface LeaderboardItem {
@@ -284,6 +286,16 @@ export function BattlePlay({ roomId }: Props) {
             <div className="mt-6 text-lg font-bold leading-relaxed text-ink-950 sm:text-xl">
               {currentQ.question_text}
             </div>
+
+            {currentQ.image_url && (
+              <div className="mt-4 flex justify-center">
+                <ImageZoomModal
+                  src={currentQ.image_url}
+                  alt="Battle Question Diagram"
+                  caption="Click to zoom diagram"
+                />
+              </div>
+            )}
 
             {/* Options A - D */}
             <div className="mt-8 space-y-3">

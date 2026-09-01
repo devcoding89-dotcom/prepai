@@ -54,6 +54,7 @@ export async function GET(
           options: q.options,
           difficulty: q.difficulty,
           year: q.year,
+          image_url: q.image_url,
         });
       }
     }
