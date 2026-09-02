@@ -124,11 +124,9 @@ export async function fetchFromAloc(params: {
   const token = params.token || process.env.ALOC_ACCESS_TOKEN || "QB-05efc0cc3a1ed7a0b78d";
   const limit = Math.min(Math.max(Number(params.count) || 40, 1), 40);
 
-  let typeParam = "wassce";
-  if (params.exam === "JAMB") typeParam = "utme";
-  if (params.exam === "NECO") typeParam = "neco";
-
-  let url = `https://questions.aloc.com.ng/api/v2/m/${limit}?subject=${encodeURIComponent(params.subjectSlug)}&type=${typeParam}`;
+  // Note: ALOC's free tier doesn't reliably filter by exam type.
+  // We omit the type filter and let the API return whatever it has for the subject.
+  let url = `https://questions.aloc.com.ng/api/v2/m/${limit}?subject=${encodeURIComponent(params.subjectSlug)}`;
   if (params.year) {
     url += `&year=${params.year}`;
   }
@@ -155,8 +153,11 @@ export async function fetchFromAloc(params: {
     message?: string;
   };
 
-  if (json.error || json.message) {
-    throw new Error(json.error || json.message || "Failed to fetch from ALOC API");
+  // ALOC sometimes returns a `message` field alongside actual data (e.g. fallback results).
+  // Only treat it as a fatal error if there is NO data at all.
+  const hasData = Array.isArray(json.data) ? json.data.length > 0 : Boolean(json.data);
+  if (json.error && !hasData) {
+    throw new Error(json.error || "Failed to fetch from ALOC API");
   }
 
   if (Array.isArray(json.data)) {
