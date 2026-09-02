@@ -11,6 +11,7 @@ import {
   ImageIcon,
   Loader2,
   RefreshCw,
+  ShieldCheck,
   Sparkles,
 } from "lucide-react";
 import { Badge, Card, CardBody, CardHeader, CardTitle } from "@/components/ui/card";
@@ -64,6 +65,8 @@ export function WaecApiImporter() {
         error?: string;
         totalFetched?: number;
         totalValid?: number;
+        duplicatesSkipped?: number;
+        newCount?: number;
         inserted?: number;
         questions?: PreviewQuestion[];
       };
@@ -73,13 +76,30 @@ export function WaecApiImporter() {
         return;
       }
 
+      const dups = data.duplicatesSkipped ?? 0;
+      const newItems = data.newCount ?? data.inserted ?? 0;
+
       if (saveDirectly) {
-        setSavedCount(data.inserted ?? data.totalValid ?? 0);
-        setSuccessMessage(
-          `Successfully saved ${data.inserted ?? data.totalValid} ${exam} ${subjectName} questions directly into the database!`
-        );
+        if (newItems === 0) {
+          setError(
+            `All ${data.totalFetched ?? 0} questions fetched were already in your bank! Select a specific year (e.g. 2021, 2020) to get fresh questions.`
+          );
+        } else {
+          setSuccessMessage(
+            `Successfully saved ${newItems} new ${exam} ${subjectName} questions!${dups > 0 ? ` (${dups} duplicates were already in your bank and were skipped).` : ""}`
+          );
+        }
         setPreviewQuestions([]);
       } else {
+        if (newItems === 0) {
+          setError(
+            `All ${data.totalFetched ?? 0} questions fetched were already in your bank! Select a specific year to find new ones.`
+          );
+        } else if (dups > 0) {
+          setSuccessMessage(
+            `Found ${newItems} brand-new questions (${dups} already in database were skipped). Review them below.`
+          );
+        }
         setPreviewQuestions(data.questions || []);
       }
     } catch (err) {
@@ -140,7 +160,11 @@ export function WaecApiImporter() {
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 border border-blue-200">
+                <ShieldCheck className="size-3.5 text-blue-600" />
+                Duplicate Blocker Active
+              </span>
               <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 border border-emerald-200">
                 <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
                 API Connected
@@ -195,7 +219,9 @@ export function WaecApiImporter() {
                 <option value={10}>10 Questions</option>
                 <option value={20}>20 Questions</option>
                 <option value={30}>30 Questions</option>
-                <option value={40}>40 Questions (Full Paper Batch)</option>
+                <option value={40}>40 Questions (1 Batch)</option>
+                <option value={80}>80 Questions (2 Batches)</option>
+                <option value={120}>120 Questions (3 Batches)</option>
               </select>
             </div>
 

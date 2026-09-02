@@ -59,18 +59,46 @@ export async function POST(req: Request) {
       }, { status: 422 });
     }
 
+    // Deduplicate against existing questions in DB and within this batch
+    const existing = await repo.listQuestions({
+      exam,
+      subject: subjectName,
+      limit: 2000,
+    });
+
+    const normalizeKey = (text: string) => text.toLowerCase().replace(/[^a-z0-9]/gi, "").slice(0, 150);
+    const existingKeys = new Set<string>();
+    for (const eq of existing.rows) {
+      existingKeys.add(normalizeKey(eq.question_text));
+    }
+
+    const uniqueNewQuestions: Omit<Question, "id" | "created_at">[] = [];
+    let duplicatesSkipped = 0;
+
+    for (const q of formatted) {
+      const key = normalizeKey(q.question_text);
+      if (existingKeys.has(key)) {
+        duplicatesSkipped++;
+      } else {
+        existingKeys.add(key);
+        uniqueNewQuestions.push(q);
+      }
+    }
+
     let inserted = 0;
-    if (saveToDb) {
-      inserted = await repo.bulkCreateQuestions(formatted);
+    if (saveToDb && uniqueNewQuestions.length > 0) {
+      inserted = await repo.bulkCreateQuestions(uniqueNewQuestions);
     }
 
     return NextResponse.json({
       ok: true,
       totalFetched: rawQuestions.length,
       totalValid: formatted.length,
+      duplicatesSkipped,
       inserted,
+      newCount: uniqueNewQuestions.length,
       savedToDb: saveToDb,
-      questions: formatted,
+      questions: uniqueNewQuestions,
     });
   } catch (error) {
     console.error("[sync-aloc route error]", error);

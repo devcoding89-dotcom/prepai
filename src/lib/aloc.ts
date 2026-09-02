@@ -122,49 +122,67 @@ export async function fetchFromAloc(params: {
   token?: string;
 }): Promise<AlocRawQuestion[]> {
   const token = params.token || process.env.ALOC_ACCESS_TOKEN || "QB-05efc0cc3a1ed7a0b78d";
-  const limit = Math.min(Math.max(Number(params.count) || 40, 1), 40);
+  const targetCount = Math.min(Math.max(Number(params.count) || 40, 1), 120);
+  const batchSize = 40;
+  const numBatches = Math.ceil(targetCount / batchSize);
 
-  // Note: ALOC's free tier doesn't reliably filter by exam type.
-  // We omit the type filter and let the API return whatever it has for the subject.
-  let url = `https://questions.aloc.com.ng/api/v2/m/${limit}?subject=${encodeURIComponent(params.subjectSlug)}`;
-  if (params.year) {
-    url += `&year=${params.year}`;
+  const allQuestions: AlocRawQuestion[] = [];
+  const seenIds = new Set<string | number>();
+
+  for (let b = 0; b < numBatches; b++) {
+    const chunkLimit = Math.min(batchSize, targetCount - allQuestions.length);
+    if (chunkLimit <= 0) break;
+
+    let url = `https://questions.aloc.com.ng/api/v2/m/${chunkLimit}?subject=${encodeURIComponent(params.subjectSlug)}`;
+    if (params.year) {
+      url += `&year=${params.year}`;
+    }
+
+    try {
+      const response = await fetch(url, {
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          AccessToken: token,
+        },
+        cache: "no-store",
+      });
+
+      if (!response.ok) {
+        if (b > 0) break; // if we already have some questions from earlier batch, return what we got
+        const errorText = await response.text().catch(() => "");
+        throw new Error(`ALOC API returned status ${response.status}: ${errorText || response.statusText}`);
+      }
+
+      const json = (await response.json()) as {
+        status?: number;
+        total?: number;
+        data?: AlocRawQuestion[] | AlocRawQuestion;
+        error?: string;
+        message?: string;
+      };
+
+      const hasData = Array.isArray(json.data) ? json.data.length > 0 : Boolean(json.data);
+      if (json.error && !hasData) {
+        if (b > 0) break;
+        throw new Error(json.error || "Failed to fetch from ALOC API");
+      }
+
+      const items = Array.isArray(json.data) ? json.data : json.data ? [json.data] : [];
+      for (const item of items) {
+        const idKey = item.id ?? item.question;
+        if (!seenIds.has(idKey)) {
+          seenIds.add(idKey);
+          allQuestions.push(item);
+        }
+      }
+
+      if (items.length < chunkLimit) break; // no more questions available
+    } catch (err) {
+      if (b > 0) break;
+      throw err;
+    }
   }
 
-  const response = await fetch(url, {
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-      AccessToken: token,
-    },
-    cache: "no-store",
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => "");
-    throw new Error(`ALOC API returned status ${response.status}: ${errorText || response.statusText}`);
-  }
-
-  const json = (await response.json()) as {
-    status?: number;
-    total?: number;
-    data?: AlocRawQuestion[] | AlocRawQuestion;
-    error?: string;
-    message?: string;
-  };
-
-  // ALOC sometimes returns a `message` field alongside actual data (e.g. fallback results).
-  // Only treat it as a fatal error if there is NO data at all.
-  const hasData = Array.isArray(json.data) ? json.data.length > 0 : Boolean(json.data);
-  if (json.error && !hasData) {
-    throw new Error(json.error || "Failed to fetch from ALOC API");
-  }
-
-  if (Array.isArray(json.data)) {
-    return json.data;
-  } else if (json.data && typeof json.data === "object") {
-    return [json.data];
-  }
-
-  return [];
+  return allQuestions;
 }
