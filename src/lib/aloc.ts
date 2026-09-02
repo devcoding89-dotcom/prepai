@@ -1,4 +1,3 @@
-import "server-only";
 import { type Exam, type Question } from "@/lib/types";
 
 export interface AlocRawQuestion {
