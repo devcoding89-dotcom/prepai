@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Image as ImageIcon, Pencil, Plus, Search, Trash2, Upload } from "lucide-react";
+import { CloudDownload, Image as ImageIcon, Pencil, Plus, Search, Trash2, Upload } from "lucide-react";
 import { repo } from "@/lib/db";
 import { EXAMS, type Difficulty, type Exam } from "@/lib/types";
 import { Badge, Card, CardBody, EmptyState } from "@/components/ui/card";
@@ -63,8 +63,8 @@ export default async function AdminQuestionsPage({
         </div>
         <div className="flex flex-wrap gap-2">
           <Link href="/admin/questions/import" className={buttonClass("outline", "sm")}>
-            <Upload className="size-4" />
-            Bulk import
+            <CloudDownload className="size-4 text-brand-600" />
+            Import &amp; Sync API
           </Link>
           <Link href="/admin/questions/new" className={buttonClass("primary", "sm")}>
             <Plus className="size-4" />

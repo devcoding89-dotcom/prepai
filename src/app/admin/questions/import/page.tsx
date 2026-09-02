@@ -1,4 +1,4 @@
-import { QuestionImporter } from "@/components/admin/question-importer";
+import { ImportTabs } from "@/components/admin/import-tabs";
 
 export const dynamic = "force-dynamic";
 
@@ -6,12 +6,12 @@ export default function ImportPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-5">
       <div>
-        <h1 className="text-2xl font-extrabold tracking-tight text-ink-950">Bulk import questions</h1>
+        <h1 className="text-2xl font-extrabold tracking-tight text-ink-950">Import Questions</h1>
         <p className="mt-1 text-sm text-ink-500">
-          Load your own past questions from a spreadsheet or JSON export — validated row by row.
+          Instantly sync live past questions from WAEC &amp; JAMB via API, or paste your own spreadsheet/text.
         </p>
       </div>
-      <QuestionImporter />
+      <ImportTabs />
     </div>
   );
 }
