@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import {
   AlertTriangle,
   ArrowRight,
+  Bell,
   BookOpen,
   CalendarClock,
   ClipboardList,
@@ -19,7 +20,6 @@ import { Badge, Card, CardBody, CardHeader, CardTitle, EmptyState, ProgressBar, 
 import { LinkButton, buttonClass } from "@/components/ui/button";
 import { ScoreTrendChart } from "@/components/app/charts";
 import { DailyMotivationCard } from "@/components/app/daily-motivation-card";
-import { DashboardNoticeButton } from "@/components/app/notifications-modal";
 import { formatDate, formatDuration, scoreColor, timeAgo } from "@/lib/utils";
 
 export const metadata = { title: "Dashboard" };
@@ -68,7 +68,35 @@ export default async function DashboardPage() {
       </div>
 
       {/* Admin announcements / notices notice trigger */}
-      <DashboardNoticeButton announcements={announcements} />
+      {announcements.length > 0 && (
+        <Link
+          href="/notifications"
+          className="group flex items-center justify-between gap-3 rounded-2xl border border-amber-200/90 bg-gradient-to-r from-amber-50/90 via-white to-orange-50/40 p-3.5 sm:px-4.5 sm:py-3 transition-all hover:border-amber-300 hover:shadow-xs"
+        >
+          <div className="flex items-center gap-3 min-w-0 text-left">
+            <span className="relative grid size-9 shrink-0 place-items-center rounded-xl bg-amber-100 text-amber-700 border border-amber-200">
+              <Bell className="size-4.5" />
+            </span>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-amber-950">
+                  Official Notice Available
+                </span>
+                <span className="rounded-md bg-amber-100/90 px-1.5 py-0.5 text-[10px] font-bold text-amber-800 border border-amber-200/70">
+                  {announcements[0]?.title || "Exam Notice"}
+                </span>
+              </div>
+              <p className="truncate text-xs text-ink-600 font-medium mt-0.5">
+                {announcements[0]?.message}
+              </p>
+            </div>
+          </div>
+
+          <span className="shrink-0 inline-flex items-center gap-1 rounded-xl bg-white px-3 py-1.5 text-xs font-bold text-amber-900 border border-amber-200/80 group-hover:bg-amber-100/60 transition-colors shadow-2xs">
+            Open Full Notice →
+          </span>
+        </Link>
+      )}
 
       {/* Daily study motivation & exam integrity card */}
       <DailyMotivationCard streakDays={stats.streak_days} />

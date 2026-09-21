@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 import {
   BarChart3,
+  Bell,
   BookOpen,
   ClipboardList,
   CreditCard,
@@ -23,10 +24,11 @@ import { buttonClass } from "@/components/ui/button";
 import { cn, initials } from "@/lib/utils";
 import type { Announcement, Profile } from "@/lib/types";
 import { logoutAction } from "@/app/auth/actions";
-import { NotificationBell } from "@/components/app/notifications-modal";
+import { NotificationBell } from "@/components/app/notification-bell";
 
 const nav = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/notifications", label: "Notices & Alerts", icon: Bell },
   { href: "/practice", label: "Practice", icon: ClipboardList },
   { href: "/battle", label: "Battle Room", icon: Swords },
   { href: "/reports", label: "AI Reports", icon: Sparkles },
