@@ -21,8 +21,9 @@ import {
 import { Logo } from "@/components/logo";
 import { buttonClass } from "@/components/ui/button";
 import { cn, initials } from "@/lib/utils";
-import type { Profile } from "@/lib/types";
+import type { Announcement, Profile } from "@/lib/types";
 import { logoutAction } from "@/app/auth/actions";
+import { NotificationBell } from "@/components/app/notifications-modal";
 
 const nav = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -63,10 +64,12 @@ interface BeforeInstallPromptEvent extends Event {
 export function AppShell({
   user,
   paywallEnabled = true,
+  announcements = [],
   children,
 }: {
   user: Profile;
   paywallEnabled?: boolean;
+  announcements?: Announcement[];
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -193,6 +196,7 @@ export function AppShell({
                 Full access
               </span>
             )}
+            <NotificationBell announcements={announcements} />
             <Link href="/settings" className="flex items-center gap-2.5 rounded-xl py-1 pl-1 pr-2 hover:bg-ink-100">
               <span className="grid size-9 place-items-center rounded-full bg-gradient-to-br from-brand-500 to-brand-700 text-[13px] font-bold text-white">
                 {initials(user.full_name, user.email)}

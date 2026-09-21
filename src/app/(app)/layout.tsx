@@ -8,9 +8,12 @@ export const dynamic = "force-dynamic";
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
   if (!user) redirect("/auth/login");
-  const settings = await repo.getSettings();
+  const [settings, announcements] = await Promise.all([
+    repo.getSettings(),
+    repo.listAnnouncements({ activeOnly: true, exam: user.target_exam || undefined }),
+  ]);
   return (
-    <AppShell user={user} paywallEnabled={settings.paywall_enabled}>
+    <AppShell user={user} paywallEnabled={settings.paywall_enabled} announcements={announcements}>
       {children}
     </AppShell>
   );

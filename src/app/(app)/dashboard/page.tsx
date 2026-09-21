@@ -19,7 +19,7 @@ import { Badge, Card, CardBody, CardHeader, CardTitle, EmptyState, ProgressBar, 
 import { LinkButton, buttonClass } from "@/components/ui/button";
 import { ScoreTrendChart } from "@/components/app/charts";
 import { DailyMotivationCard } from "@/components/app/daily-motivation-card";
-import { AnnouncementsBanner } from "@/components/app/announcements-banner";
+import { DashboardNoticeButton } from "@/components/app/notifications-modal";
 import { formatDate, formatDuration, scoreColor, timeAgo } from "@/lib/utils";
 
 export const metadata = { title: "Dashboard" };
@@ -67,8 +67,8 @@ export default async function DashboardPage() {
         </LinkButton>
       </div>
 
-      {/* Admin announcements / notices broadcast */}
-      <AnnouncementsBanner announcements={announcements} />
+      {/* Admin announcements / notices notice trigger */}
+      <DashboardNoticeButton announcements={announcements} />
 
       {/* Daily study motivation & exam integrity card */}
       <DailyMotivationCard streakDays={stats.streak_days} />
