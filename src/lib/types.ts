@@ -297,3 +297,19 @@ export interface BattleParticipant {
   joined_at: string;
   finished_at: string | null;
 }
+
+// ---------------------------------------------------------------------------
+// Announcements / Notices
+// ---------------------------------------------------------------------------
+
+export type AnnouncementType = "info" | "warning" | "alert" | "success";
+
+export interface Announcement {
+  id: string;
+  title: string;
+  message: string;
+  type: AnnouncementType;
+  target_exam: Exam | "ALL";
+  is_active: boolean;
+  created_at: string;
+}

@@ -32,15 +32,27 @@ export const ALOC_SUBJECTS: AlocSubject[] = [
   { slug: "economics", name: "Economics" },
   { slug: "government", name: "Government" },
   { slug: "commerce", name: "Commerce" },
-  { slug: "accounting", name: "Financial Accounting" },
+  { slug: "accounting", name: "Accounting" },
   { slug: "englishlit", name: "Literature in English" },
-  { slug: "crk", name: "Christian Religious Knowledge (CRK)" },
-  { slug: "irk", name: "Islamic Religious Knowledge (IRK)" },
+  { slug: "crk", name: "Christian Religious Studies (CRS)" },
+  { slug: "irk", name: "Islamic Studies (IRS)" },
   { slug: "geography", name: "Geography" },
   { slug: "civiledu", name: "Civic Education" },
   { slug: "history", name: "History" },
   { slug: "currentaffairs", name: "Current Affairs" },
   { slug: "insurance", name: "Insurance" },
+];
+
+/**
+ * Subjects your app supports but the ALOC API does NOT have data for.
+ * These can only be populated via manual entry, bulk paste, or AI generation.
+ */
+export const SUBJECTS_NOT_IN_ALOC: string[] = [
+  "Agricultural Science",
+  "Arabic",
+  "Computer Studies",
+  "French",
+  "Further Mathematics",
 ];
 
 function sanitizeHtml(html: string): string {

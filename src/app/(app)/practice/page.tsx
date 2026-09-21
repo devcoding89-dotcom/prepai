@@ -3,6 +3,7 @@ import { canAccessPaidFeatures, getCurrentUser } from "@/lib/auth";
 import { repo } from "@/lib/db";
 import { PracticeSetup } from "@/components/app/practice-setup";
 import { ExamTabs } from "@/components/app/exam-tabs";
+import { AnnouncementsBanner } from "@/components/app/announcements-banner";
 import { EXAMS, SUBJECTS_BY_EXAM, type Exam } from "@/lib/types";
 
 export const metadata = { title: "Practice" };
@@ -19,9 +20,10 @@ export default async function PracticePage({
   // ?exam=AI%20GENERATED lets students practise imported AI questions.
   const exam = EXAMS.includes(examParam as Exam) ? (examParam as Exam) : "JAMB";
 
-  const [counts, facets] = await Promise.all([
+  const [counts, facets, announcements] = await Promise.all([
     repo.questionCountsBySubject(exam),
     repo.questionFacets(exam),
+    repo.listAnnouncements({ activeOnly: true, exam }),
   ]);
   const countBySubject = new Map(counts.map((item) => [item.subject, item.count]));
   const configuredSubjects = SUBJECTS_BY_EXAM[exam] ?? [];
@@ -38,6 +40,7 @@ export default async function PracticePage({
         </p>
         <ExamTabs currentExam={exam} />
       </div>
+      <AnnouncementsBanner announcements={announcements} />
       <PracticeSetup
         exam={exam}
         subjectCounts={subjectCounts}

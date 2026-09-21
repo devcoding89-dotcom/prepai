@@ -46,6 +46,8 @@ const tables = [
   "bookmarks",
   "payments",
   "app_settings",
+  "battle_rooms",
+  "announcements",
 ];
 
 console.log("\nTables:");

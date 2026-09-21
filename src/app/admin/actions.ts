@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { repo } from "@/lib/db";
 import { expiryFrom } from "@/lib/paystack";
-import { EXAMS, type Difficulty, type Exam, type Question } from "@/lib/types";
+import { EXAMS, type AnnouncementType, type Difficulty, type Exam, type Question } from "@/lib/types";
 
 async function requireAdmin() {
   const user = await getCurrentUser();
@@ -184,4 +184,60 @@ export async function saveSettingsAction(_prev: AdminState, formData: FormData):
   revalidatePath("/admin/settings");
   revalidatePath("/");
   return { ok: "Settings saved." };
+}
+
+// ------------------------------------------------------------- announcements
+
+export async function createAnnouncementAction(
+  _prev: AdminState,
+  formData: FormData,
+): Promise<AdminState> {
+  await requireAdmin();
+  const title = String(formData.get("title") ?? "").trim();
+  const message = String(formData.get("message") ?? "").trim();
+  const type = (String(formData.get("type") ?? "warning") as AnnouncementType) || "warning";
+  const target_exam = (String(formData.get("target_exam") ?? "ALL") as Exam | "ALL") || "ALL";
+
+  if (!title) return { error: "Please provide a title for the note." };
+  if (!message) return { error: "Please write a message for the students." };
+
+  await repo.createAnnouncement({
+    title,
+    message,
+    type,
+    target_exam,
+    is_active: true,
+  });
+
+  revalidatePath("/admin/announcements");
+  revalidatePath("/dashboard");
+  revalidatePath("/practice");
+  revalidatePath("/");
+
+  return { ok: "Notice published successfully!" };
+}
+
+export async function deleteAnnouncementAction(formData: FormData) {
+  await requireAdmin();
+  const id = String(formData.get("id") ?? "");
+  if (id) {
+    await repo.deleteAnnouncement(id);
+  }
+  revalidatePath("/admin/announcements");
+  revalidatePath("/dashboard");
+  revalidatePath("/practice");
+  revalidatePath("/");
+}
+
+export async function toggleAnnouncementActiveAction(formData: FormData) {
+  await requireAdmin();
+  const id = String(formData.get("id") ?? "");
+  const isActive = formData.get("is_active") === "true";
+  if (id) {
+    await repo.toggleAnnouncementActive(id, !isActive);
+  }
+  revalidatePath("/admin/announcements");
+  revalidatePath("/dashboard");
+  revalidatePath("/practice");
+  revalidatePath("/");
 }

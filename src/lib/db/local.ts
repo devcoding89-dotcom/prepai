@@ -6,6 +6,7 @@ import path from "node:path";
 import crypto from "node:crypto";
 import bcrypt from "bcryptjs";
 import type {
+  Announcement,
   AppSettings,
   BattleParticipant,
   BattleRoom,
@@ -41,6 +42,7 @@ interface DB {
   bookmarks: Bookmark[];
   battle_rooms: BattleRoom[];
   battle_participants: BattleParticipant[];
+  announcements: Announcement[];
   settings: AppSettings;
 }
 
@@ -67,6 +69,7 @@ function emptyDB(): DB {
     bookmarks: [],
     battle_rooms: [],
     battle_participants: [],
+    announcements: [],
     settings: { ...DEFAULT_SETTINGS },
   };
 }
@@ -95,6 +98,18 @@ function buildSeed(): DB {
   // Starter content is seeded by default so all subjects are available immediately.
   db.questions = seedQuestions().map((q) => ({ ...q, id: uid(), created_at: ts }));
   db.textbooks = seedTextbooks().map((t) => ({ ...t, id: uid(), created_at: ts }));
+  db.announcements = [
+    {
+      id: uid(),
+      title: "Subject Availability Notice",
+      message:
+        "Questions for Agricultural Science, Arabic, Computer Studies, French, and Further Mathematics are currently being compiled and reviewed manually. CBT practice for these subjects will be available shortly.",
+      type: "warning",
+      target_exam: "ALL",
+      is_active: true,
+      created_at: ts,
+    },
+  ];
 
   return db;
 }
@@ -115,8 +130,24 @@ function loadSync(): DB {
       cache.settings = { ...DEFAULT_SETTINGS, ...cache.settings };
       cache.battle_rooms = cache.battle_rooms || [];
       cache.battle_participants = cache.battle_participants || [];
+      cache.announcements = cache.announcements || [];
       let mutated = false;
       const ts = now();
+      if (!cache.announcements || cache.announcements.length === 0) {
+        cache.announcements = [
+          {
+            id: uid(),
+            title: "Subject Availability Notice",
+            message:
+              "Questions for Agricultural Science, Arabic, Computer Studies, French, and Further Mathematics are currently being compiled and reviewed manually. CBT practice for these subjects will be available shortly.",
+            type: "warning",
+            target_exam: "ALL",
+            is_active: true,
+            created_at: ts,
+          },
+        ];
+        mutated = true;
+      }
       if (!cache.questions || cache.questions.length === 0) {
         cache.questions = seedQuestions().map((q) => ({ ...q, id: uid(), created_at: ts }));
         mutated = true;
@@ -591,5 +622,46 @@ export const localRepo: Repo = {
     return loadSync().battle_participants
       .filter((p) => p.room_id === roomId)
       .sort((a, b) => b.correct_count - a.correct_count || a.joined_at.localeCompare(b.joined_at));
+  },
+
+  // announcements / notices
+  async listAnnouncements(opts) {
+    const db = loadSync();
+    let rows = db.announcements || [];
+    if (opts?.activeOnly) {
+      rows = rows.filter((a) => a.is_active);
+    }
+    if (opts?.exam && opts.exam !== "ALL") {
+      rows = rows.filter((a) => a.target_exam === "ALL" || a.target_exam === opts.exam);
+    }
+    return [...rows].sort((a, b) => b.created_at.localeCompare(a.created_at));
+  },
+
+  async createAnnouncement(a) {
+    return mutate((db) => {
+      const full: Announcement = {
+        ...a,
+        id: crypto.randomUUID(),
+        created_at: new Date().toISOString(),
+      };
+      db.announcements = db.announcements || [];
+      db.announcements.unshift(full);
+      return full;
+    });
+  },
+
+  async deleteAnnouncement(id) {
+    await mutate((db) => {
+      db.announcements = (db.announcements || []).filter((a) => a.id !== id);
+    });
+  },
+
+  async toggleAnnouncementActive(id, is_active) {
+    return mutate((db) => {
+      const item = (db.announcements || []).find((a) => a.id === id);
+      if (!item) return null;
+      item.is_active = is_active;
+      return item;
+    });
   },
 };

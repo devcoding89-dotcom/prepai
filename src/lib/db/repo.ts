@@ -1,4 +1,5 @@
 import type {
+  Announcement,
   AppSettings,
   BattleParticipant,
   BattleRoom,
@@ -116,6 +117,12 @@ export interface Repo {
   getBattleParticipant(id: string): Promise<BattleParticipant | null>;
   updateBattleParticipant(id: string, patch: Partial<BattleParticipant>): Promise<BattleParticipant | null>;
   listBattleParticipants(roomId: string): Promise<BattleParticipant[]>;
+
+  // announcements / notices
+  listAnnouncements(opts?: { activeOnly?: boolean; exam?: Exam | "ALL" }): Promise<Announcement[]>;
+  createAnnouncement(a: Omit<Announcement, "id" | "created_at">): Promise<Announcement>;
+  deleteAnnouncement(id: string): Promise<void>;
+  toggleAnnouncementActive(id: string, is_active: boolean): Promise<Announcement | null>;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {

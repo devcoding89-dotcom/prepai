@@ -3,6 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import {
+  AlertTriangle,
+  BookOpen,
   CheckCircle2,
   CloudDownload,
   Database,
@@ -17,7 +19,7 @@ import {
 import { Badge, Card, CardBody, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { ALOC_SUBJECTS } from "@/lib/aloc";
+import { ALOC_SUBJECTS, SUBJECTS_NOT_IN_ALOC } from "@/lib/aloc";
 import { type Exam, type Question } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -36,7 +38,11 @@ export function WaecApiImporter() {
   const [savedCount, setSavedCount] = useState<number | null>(null);
 
   const selectedSubjectObj = ALOC_SUBJECTS.find((s) => s.slug === subjectSlug);
-  const subjectName = selectedSubjectObj?.name || "Mathematics";
+  // WAEC/NECO call it "Financial Accounting", JAMB calls it "Accounting"
+  const subjectName =
+    subjectSlug === "accounting" && (exam === "WAEC" || exam === "NECO")
+      ? "Financial Accounting"
+      : selectedSubjectObj?.name || "Mathematics";
 
   const handleFetch = async (saveDirectly: boolean) => {
     setBusy(true);
@@ -288,6 +294,52 @@ export function WaecApiImporter() {
               </Link>
             </div>
           )}
+        </CardBody>
+      </Card>
+
+      {/* Notice: subjects NOT available from ALOC API */}
+      <Card className="border-amber-200/80 bg-gradient-to-br from-amber-50/50 via-white to-orange-50/30">
+        <CardBody className="flex flex-col gap-3 py-4">
+          <div className="flex items-start gap-2.5">
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700">
+              <AlertTriangle className="size-4" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-amber-900">
+                Some subjects are not available from the ALOC API
+              </p>
+              <p className="mt-0.5 text-xs text-amber-800/80">
+                The following subjects don&apos;t have past questions in the ALOC database. Use{" "}
+                <strong>Manual Entry</strong>, <strong>Bulk Paste/Import</strong>, or <strong>AI Generation</strong> to add questions for them.
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-1.5 pl-[2.625rem]">
+            {SUBJECTS_NOT_IN_ALOC.map((s) => (
+              <span
+                key={s}
+                className="inline-flex items-center rounded-full bg-amber-100/80 px-2.5 py-1 text-[11px] font-semibold text-amber-800 border border-amber-200/60"
+              >
+                {s}
+              </span>
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-2 pl-[2.625rem]">
+            <Link
+              href="/admin/questions/new"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-brand-700 border border-brand-200 shadow-xs hover:bg-brand-50 transition-colors"
+            >
+              <BookOpen className="size-3.5" />
+              Add Question Manually
+            </Link>
+            <Link
+              href="/admin/questions/import"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-brand-700 border border-brand-200 shadow-xs hover:bg-brand-50 transition-colors"
+            >
+              <CloudDownload className="size-3.5" />
+              Bulk Paste / Import
+            </Link>
+          </div>
         </CardBody>
       </Card>
 

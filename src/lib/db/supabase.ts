@@ -10,6 +10,7 @@ if (typeof (globalThis as { WebSocket?: unknown }).WebSocket === "undefined") {
 }
 
 import type {
+  Announcement,
   AppSettings,
   BattleParticipant,
   BattleRoom,
@@ -474,5 +475,57 @@ export const supabaseRepo: Repo = {
       console.error("[supabase:listBattleParticipants]", e);
     }
     return localRepo.listBattleParticipants(roomId);
+  },
+
+  // announcements / notices
+  async listAnnouncements(opts) {
+    try {
+      let query = admin().from(T("announcements")).select("*");
+      if (opts?.activeOnly) {
+        query = query.eq("is_active", true);
+      }
+      if (opts?.exam && opts.exam !== "ALL") {
+        query = query.or(`target_exam.eq.ALL,target_exam.eq.${opts.exam}`);
+      }
+      query = query.order("created_at", { ascending: false });
+      const res = await query;
+      if (res.error) console.error("[supabase:listAnnouncements]", res.error);
+      if (res.data) return unwrap(res, "listAnnouncements") as Announcement[];
+    } catch (e) {
+      console.error("[supabase:listAnnouncements]", e);
+    }
+    return localRepo.listAnnouncements(opts);
+  },
+
+  async createAnnouncement(a) {
+    try {
+      const res = await admin().from(T("announcements")).insert(a).select().single();
+      return unwrap(res, "createAnnouncement") as Announcement;
+    } catch (e) {
+      console.error("[supabase:createAnnouncement]", e);
+      return localRepo.createAnnouncement(a);
+    }
+  },
+
+  async deleteAnnouncement(id) {
+    try {
+      const res = await admin().from(T("announcements")).delete().eq("id", id);
+      if (res.error) console.error("[supabase:deleteAnnouncement]", res.error);
+      else return;
+    } catch (e) {
+      console.error("[supabase:deleteAnnouncement]", e);
+    }
+    return localRepo.deleteAnnouncement(id);
+  },
+
+  async toggleAnnouncementActive(id, is_active) {
+    try {
+      const res = await admin().from(T("announcements")).update({ is_active }).eq("id", id).select().maybeSingle();
+      if (res.error) console.error("[supabase:toggleAnnouncementActive]", res.error);
+      if (res.data) return unwrap(res, "toggleAnnouncementActive") as Announcement;
+    } catch (e) {
+      console.error("[supabase:toggleAnnouncementActive]", e);
+    }
+    return localRepo.toggleAnnouncementActive(id, is_active);
   },
 };

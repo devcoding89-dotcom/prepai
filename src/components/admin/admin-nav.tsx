@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  Bell,
   BookOpen,
   CreditCard,
   Database,
@@ -16,6 +17,7 @@ import { cn } from "@/lib/utils";
 
 const items = [
   { href: "/admin", label: "Overview", icon: LayoutDashboard, exact: true },
+  { href: "/admin/announcements", label: "Notices & Alerts", icon: Bell },
   { href: "/admin/questions", label: "Questions", icon: Database },
   { href: "/admin/questions/import", label: "Import", icon: Upload },
   { href: "/admin/textbooks", label: "Textbooks", icon: BookOpen },

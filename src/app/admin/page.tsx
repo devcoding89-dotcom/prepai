@@ -1,5 +1,6 @@
 import Link from "next/link";
 import {
+  Bell,
   BookOpen,
   Database,
   ListChecks,
@@ -45,7 +46,11 @@ export default async function AdminOverview() {
           <h1 className="text-2xl font-extrabold tracking-tight text-ink-950">Overview</h1>
           <p className="mt-1 text-sm text-ink-500">Platform health at a glance.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <Link href="/admin/announcements" className={buttonClass("outline", "sm")}>
+            <Bell className="size-4 text-amber-500" />
+            Notices & Alerts
+          </Link>
           <Link href="/admin/questions/new" className={buttonClass("outline", "sm")}>
             <Database className="size-4" />
             Add question

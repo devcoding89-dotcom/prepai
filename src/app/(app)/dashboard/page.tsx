@@ -13,11 +13,13 @@ import {
   Trophy,
 } from "lucide-react";
 import { canAccessPaidFeatures, getCurrentUser } from "@/lib/auth";
+import { repo } from "@/lib/db";
 import { getDashboardData } from "@/lib/stats";
 import { Badge, Card, CardBody, CardHeader, CardTitle, EmptyState, ProgressBar, Stat } from "@/components/ui/card";
 import { LinkButton, buttonClass } from "@/components/ui/button";
 import { ScoreTrendChart } from "@/components/app/charts";
 import { DailyMotivationCard } from "@/components/app/daily-motivation-card";
+import { AnnouncementsBanner } from "@/components/app/announcements-banner";
 import { formatDate, formatDuration, scoreColor, timeAgo } from "@/lib/utils";
 
 export const metadata = { title: "Dashboard" };
@@ -27,7 +29,11 @@ export default async function DashboardPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/auth/login");
 
-  const { stats, sessions, plan } = await getDashboardData(user.id);
+  const [dashboardData, announcements] = await Promise.all([
+    getDashboardData(user.id),
+    repo.listAnnouncements({ activeOnly: true, exam: user.target_exam || undefined }),
+  ]);
+  const { stats, sessions, plan } = dashboardData;
   const subscribed = await canAccessPaidFeatures(user);
   const firstName = user.full_name?.split(" ")[0] ?? "there";
   const completed = sessions.filter((s) => s.status === "completed");
@@ -60,6 +66,9 @@ export default async function DashboardPage() {
           Start new practice
         </LinkButton>
       </div>
+
+      {/* Admin announcements / notices broadcast */}
+      <AnnouncementsBanner announcements={announcements} />
 
       {/* Daily study motivation & exam integrity card */}
       <DailyMotivationCard streakDays={stats.streak_days} />
