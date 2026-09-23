@@ -236,6 +236,7 @@ export const localRepo: Repo = {
         avatar_url: null,
         subscription_status: "inactive",
         subscription_expires_at: null,
+        current_session_id: null,
         created_at: ts,
         updated_at: ts,
       };

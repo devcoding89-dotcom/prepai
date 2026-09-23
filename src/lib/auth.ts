@@ -83,12 +83,14 @@ function sign(payload: string) {
   return crypto.createHmac("sha256", secret()).update(payload).digest("base64url");
 }
 
-function encode(userId: string) {
-  const body = Buffer.from(JSON.stringify({ uid: userId, iat: Date.now() })).toString("base64url");
+const activeSessions = new Map<string, string>();
+
+function encode(userId: string, sessionId: string) {
+  const body = Buffer.from(JSON.stringify({ uid: userId, sid: sessionId, iat: Date.now() })).toString("base64url");
   return `${body}.${sign(body)}`;
 }
 
-function decode(token: string | undefined): string | null {
+function decode(token: string | undefined): { uid: string; sid?: string } | null {
   if (!token) return null;
   const [body, sig] = token.split(".");
   if (!body || !sig) return null;
@@ -97,9 +99,9 @@ function decode(token: string | undefined): string | null {
   const b = Buffer.from(expected);
   if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
   try {
-    const parsed = JSON.parse(Buffer.from(body, "base64url").toString()) as { uid: string; iat: number };
+    const parsed = JSON.parse(Buffer.from(body, "base64url").toString()) as { uid: string; sid?: string; iat: number };
     if (Date.now() - parsed.iat > MAX_AGE * 1000) return null;
-    return parsed.uid;
+    return { uid: parsed.uid, sid: parsed.sid };
   } catch {
     return null;
   }
@@ -126,14 +128,28 @@ export function verifyBattleToken(roomId: string, participantId: string, token: 
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
-export async function setSessionCookie(userId: string) {
+export async function setSessionCookie(userId: string, explicitSessionId?: string) {
   const jar = await cookies();
   const h = await headers();
   // Over HTTPS we default to SameSite=Lax for robust CSRF defense.
   // ALLOW_IFRAME_EMBED=true allows SameSite=None + Partitioned if the app is embedded in an external iframe preview.
   const isHttps = (h.get("x-forwarded-proto") ?? "http").split(",")[0].trim() === "https";
   const allowIframe = process.env.ALLOW_IFRAME_EMBED === "true";
-  jar.set(COOKIE, encode(userId), {
+
+  // Generate a new unique session identifier for this device login
+  const sessionId = explicitSessionId || crypto.randomUUID();
+
+  // Instant in-memory tracking
+  activeSessions.set(userId, sessionId);
+
+  // Persist to database so any other device is invalidated across all instances
+  try {
+    await repo.updateProfile(userId, { current_session_id: sessionId });
+  } catch (err) {
+    console.warn("[auth] Failed to persist current_session_id to database:", err);
+  }
+
+  jar.set(COOKIE, encode(userId, sessionId), {
     httpOnly: true,
     sameSite: allowIframe && isHttps ? "none" : "lax",
     secure: isHttps,
@@ -143,19 +159,47 @@ export async function setSessionCookie(userId: string) {
   });
 }
 
-export async function clearSessionCookie() {
+export async function clearSessionCookie(userId?: string) {
+  if (userId) {
+    activeSessions.delete(userId);
+  }
   const jar = await cookies();
   jar.delete(COOKIE);
 }
 
-/** Current signed-in user (or null). Cached per request. */
+/** Current signed-in user (or null). Enforces single active device. Cached per request. */
 export async function getCurrentUser(): Promise<Profile | null> {
   if (guestModeEnabled()) return getGuestProfile();
   const jar = await cookies();
-  const uid = decode(jar.get(COOKIE)?.value);
-  if (!uid) return null;
-  const profile = await repo.getProfile(uid);
+  const session = decode(jar.get(COOKIE)?.value);
+  if (!session) return null;
+
+  const profile = await repo.getProfile(session.uid);
   if (!profile) return null;
+
+  // Single-device enforcement:
+  // If another phone/browser logs in, a new session ID is generated and stored
+  // in profile.current_session_id / activeSessions, invalidating this older device immediately.
+  const currentDbSid = profile.current_session_id;
+  const currentMemSid = activeSessions.get(session.uid);
+  const activeSid = currentDbSid || currentMemSid;
+
+  if (activeSid && (!session.sid || activeSid !== session.sid)) {
+    // Another device has logged into this account! Log this device out immediately.
+    console.info(`[auth] Session invalidated for user ${profile.id}: logged into another device.`);
+    try {
+      jar.delete(COOKIE);
+    } catch {
+      // Cookies might be read-only in some Server Component render passes
+    }
+    return null;
+  }
+
+  // Sync memory cache from DB if not yet recorded
+  if (session.sid && !currentMemSid && currentDbSid === session.sid) {
+    activeSessions.set(session.uid, session.sid);
+  }
+
   return normaliseSubscription(profile);
 }
 
@@ -368,5 +412,13 @@ export async function signIn(email: string, password: string): Promise<AuthResul
 }
 
 export async function signOut() {
+  const jar = await cookies();
+  const session = decode(jar.get(COOKIE)?.value);
+  if (session?.uid) {
+    activeSessions.delete(session.uid);
+    try {
+      await repo.updateProfile(session.uid, { current_session_id: null });
+    } catch {}
+  }
   await clearSessionCookie();
 }

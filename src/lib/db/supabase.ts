@@ -94,6 +94,19 @@ export const supabaseRepo: Repo = {
       .eq("id", id)
       .select()
       .maybeSingle();
+
+    if (res.error && patch.current_session_id && res.error.message.includes("current_session_id")) {
+      // If migration 0010 hasn't been run yet, fall back to update without current_session_id column
+      const fallbackPatch = { ...patch };
+      delete fallbackPatch.current_session_id;
+      const fallbackRes = await admin()
+        .from(T("profiles"))
+        .update({ ...fallbackPatch, updated_at: new Date().toISOString() })
+        .eq("id", id)
+        .select()
+        .maybeSingle();
+      return unwrap(fallbackRes, "updateProfile") as Profile;
+    }
     return unwrap(res, "updateProfile") as Profile;
   },
   async listProfiles(opts) {

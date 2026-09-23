@@ -22,6 +22,8 @@ export interface Profile {
   avatar_url: string | null;
   subscription_status: SubscriptionStatus;
   subscription_expires_at: string | null;
+  /** Active session ID for single-device login enforcement. */
+  current_session_id?: string | null;
   created_at: string;
   updated_at: string;
 }
