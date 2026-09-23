@@ -150,10 +150,17 @@ export async function activateSubscription(
 }
 
 export function verifyWebhookSignature(rawBody: string, signature: string | null): boolean {
-  if (!paystackEnabled) return true; // simulation mode
-  if (!signature) return false;
+  if (!paystackEnabled) {
+    // Only permit unauthenticated simulated webhooks in non-production development
+    if (process.env.NODE_ENV !== "production") {
+      return true;
+    }
+    console.error("[Security] PAYSTACK_SECRET_KEY is not configured in production. Rejecting webhook.");
+    return false;
+  }
+  if (!signature || !process.env.PAYSTACK_SECRET_KEY) return false;
   const hash = crypto
-    .createHmac("sha512", process.env.PAYSTACK_SECRET_KEY!)
+    .createHmac("sha512", process.env.PAYSTACK_SECRET_KEY)
     .update(rawBody)
     .digest("hex");
   // Timing-safe compare so attackers can't probe the HMAC byte by byte.

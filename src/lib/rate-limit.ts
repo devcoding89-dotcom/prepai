@@ -71,3 +71,20 @@ export function hit(key: string, limit: number, windowMs: number): RateLimitResu
 export function reset(key: string) {
   buckets.delete(key);
 }
+
+/** Extract client IP address securely from request headers. */
+export async function getClientIp(): Promise<string> {
+  try {
+    const { headers } = await import("next/headers");
+    const h = await headers();
+    const forwarded = h.get("x-forwarded-for");
+    if (forwarded) return forwarded.split(",")[0].trim();
+    const realIp = h.get("x-real-ip");
+    if (realIp) return realIp.trim();
+    const cfIp = h.get("cf-connecting-ip");
+    if (cfIp) return cfIp.trim();
+  } catch {
+    // Non-request context
+  }
+  return "127.0.0.1";
+}

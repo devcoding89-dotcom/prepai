@@ -8,7 +8,16 @@ import { slugify } from "@/lib/utils";
 
 export const runtime = "nodejs";
 
-const ALLOWED = [".pdf", ".html", ".htm", ".txt", ".epub", ".png", ".jpg", ".jpeg", ".webp"];
+const ALLOWED = [".pdf", ".txt", ".epub", ".png", ".jpg", ".jpeg", ".webp"];
+const ALLOWED_MIME_TYPES: Record<string, string[]> = {
+  ".pdf": ["application/pdf"],
+  ".txt": ["text/plain"],
+  ".epub": ["application/epub+zip", "application/octet-stream"],
+  ".png": ["image/png"],
+  ".jpg": ["image/jpeg"],
+  ".jpeg": ["image/jpeg"],
+  ".webp": ["image/webp"],
+};
 const MAX_BYTES = 12 * 1024 * 1024;
 
 export async function POST(req: Request) {
@@ -24,7 +33,12 @@ export async function POST(req: Request) {
 
   const ext = path.extname(file.name).toLowerCase();
   if (!ALLOWED.includes(ext)) {
-    return NextResponse.json({ error: `Unsupported file type ${ext}` }, { status: 400 });
+    return NextResponse.json({ error: `Unsupported file type ${ext}. HTML and executable files are not allowed.` }, { status: 400 });
+  }
+
+  const validMimes = ALLOWED_MIME_TYPES[ext];
+  if (validMimes && file.type && !validMimes.includes(file.type.toLowerCase())) {
+    return NextResponse.json({ error: `File MIME type ${file.type} does not match extension ${ext}` }, { status: 400 });
   }
 
   const base = slugify(path.basename(file.name, ext)).slice(0, 60) || "file";

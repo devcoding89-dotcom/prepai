@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
+import { cookies } from "next/headers";
+import { getCurrentUser, verifyBattleToken } from "@/lib/auth";
 import { repo } from "@/lib/db";
 
 export async function POST(
@@ -14,15 +15,22 @@ export async function POST(
     const room = await repo.getBattleRoom(id);
     if (!room) return NextResponse.json({ error: "Room not found" }, { status: 404 });
 
-    // Validate host authority
+    // Validate host authority via verified token or session
     const participants = await repo.listBattleParticipants(id);
     const hostParticipant = participants.find((p) => p.is_host);
 
-    const isHostBySession = user && user.id === room.host_user_id;
-    const isHostByParticipant = body.participant_id && hostParticipant && hostParticipant.id === body.participant_id;
+    const jar = await cookies();
+    const cookieToken = jar.get(`battle_token_${id}`)?.value;
 
-    if (!isHostBySession && !isHostByParticipant) {
-      return NextResponse.json({ error: "Only the host can start the battle" }, { status: 403 });
+    const isHostBySession = user && user.id === room.host_user_id;
+    const isHostByToken = Boolean(
+      hostParticipant &&
+      ((body.participant_id && body.participant_id === hostParticipant.id && verifyBattleToken(id, hostParticipant.id, cookieToken)) ||
+       verifyBattleToken(id, hostParticipant.id, cookieToken))
+    );
+
+    if (!isHostBySession && !isHostByToken) {
+      return NextResponse.json({ error: "Only the verified host can start the battle" }, { status: 403 });
     }
 
     if (room.status === "active") {

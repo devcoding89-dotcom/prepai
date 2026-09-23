@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
+import { getCurrentUser, verifyBattleToken } from "@/lib/auth";
 import { repo } from "@/lib/db";
 
 export async function POST(
@@ -19,6 +21,20 @@ export async function POST(
     const participant = await repo.getBattleParticipant(participant_id);
     if (!participant || participant.room_id !== id) {
       return NextResponse.json({ error: "Participant not found" }, { status: 404 });
+    }
+
+    // Validate caller owns this participant slot
+    const user = await getCurrentUser();
+    const jar = await cookies();
+    const cookieToken = jar.get(`battle_token_${id}`)?.value;
+    const isTokenValid = verifyBattleToken(id, participant_id, cookieToken);
+    const isUserValid = Boolean(user && participant.user_id && user.id === participant.user_id);
+
+    if (!isTokenValid && !isUserValid) {
+      return NextResponse.json(
+        { error: "Forbidden: You cannot finish for other participants." },
+        { status: 403 },
+      );
     }
 
     await repo.updateBattleParticipant(participant_id, {

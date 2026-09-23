@@ -65,6 +65,11 @@ function unwrap<T>(res: { data: T | null; error: { message: string } | null }, l
   return res.data as T;
 }
 
+/** Strips PostgREST delimiters and control characters to prevent filter manipulation */
+function sanitizePostgrestSearch(raw: string): string {
+  return raw.replace(/[%_(),."'\\]/g, "").slice(0, 100).trim();
+}
+
 const SETTINGS_ID = "singleton";
 
 export const supabaseRepo: Repo = {
@@ -93,7 +98,10 @@ export const supabaseRepo: Repo = {
   },
   async listProfiles(opts) {
     let q = admin().from(T("profiles")).select("*").order("created_at", { ascending: false });
-    if (opts?.search) q = q.or(`email.ilike.%${opts.search}%,full_name.ilike.%${opts.search}%`);
+    if (opts?.search) {
+      const safe = sanitizePostgrestSearch(opts.search);
+      if (safe) q = q.or(`email.ilike.%${safe}%,full_name.ilike.%${safe}%`);
+    }
     const res = await q.limit(opts?.limit ?? 200);
     return unwrap(res, "listProfiles") as Profile[];
   },
@@ -120,7 +128,10 @@ export const supabaseRepo: Repo = {
     if (f.topic) q = q.eq("topic", f.topic);
     if (f.difficulty) q = q.eq("difficulty", f.difficulty);
     if (f.onlyActive) q = q.eq("is_active", true);
-    if (f.search) q = q.or(`question_text.ilike.%${f.search}%,topic.ilike.%${f.search}%`);
+    if (f.search) {
+      const safe = sanitizePostgrestSearch(f.search);
+      if (safe) q = q.or(`question_text.ilike.%${safe}%,topic.ilike.%${safe}%`);
+    }
     const offset = f.offset ?? 0;
     const res = await q
       .order("created_at", { ascending: false })
@@ -300,7 +311,10 @@ export const supabaseRepo: Repo = {
     if (f.onlyPublished) q = q.eq("is_published", true);
     if (f.subject && f.subject !== "All") q = q.eq("subject", f.subject);
     if (f.topic) q = q.contains("topic_tags", [f.topic]);
-    if (f.search) q = q.or(`title.ilike.%${f.search}%,book_title.ilike.%${f.search}%`);
+    if (f.search) {
+      const safe = sanitizePostgrestSearch(f.search);
+      if (safe) q = q.or(`title.ilike.%${safe}%,book_title.ilike.%${safe}%`);
+    }
     const res = await q.order("subject").order("chapter_number");
     return (unwrap(res, "listTextbooks") ?? []) as TextbookChapter[];
   },

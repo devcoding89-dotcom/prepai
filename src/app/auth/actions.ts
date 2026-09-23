@@ -10,6 +10,23 @@ export interface FormState {
   ok?: boolean;
 }
 
+function safeRedirectPath(target: string | null | undefined, fallback: string): string {
+  if (!target) return fallback;
+  const trimmed = target.trim();
+  // Prevent open redirect attacks: ensure it is a safe local path starting with /
+  // and does not contain protocol specifiers, double slashes, or backslashes.
+  if (
+    trimmed.startsWith("/") &&
+    !trimmed.startsWith("//") &&
+    !trimmed.includes("\\") &&
+    !trimmed.includes(":") &&
+    !trimmed.includes("\0")
+  ) {
+    return trimmed;
+  }
+  return fallback;
+}
+
 export async function loginAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const identifier = String(formData.get("email") ?? "");
   const email = formData.get("admin_login") === "1" && identifier.trim().toLowerCase() === (process.env.ADMIN_USERNAME ?? "khaleed").toLowerCase()
@@ -18,9 +35,12 @@ export async function loginAction(_prev: FormState, formData: FormData): Promise
   const password = String(formData.get("password") ?? "");
   const res = await signIn(email, password);
   if (!res.ok) return { error: res.error };
-  const next = String(formData.get("next") ?? "");
-  if (res.user?.role === "admin") redirect(next || "/admin");
-  redirect(next || (res.user?.target_exam ? "/dashboard" : "/onboarding"));
+  const rawNext = String(formData.get("next") ?? "");
+  if (res.user?.role === "admin") {
+    redirect(safeRedirectPath(rawNext, "/admin"));
+  }
+  const defaultPath = res.user?.target_exam ? "/dashboard" : "/onboarding";
+  redirect(safeRedirectPath(rawNext, defaultPath));
 }
 
 export async function signupAction(_prev: FormState, formData: FormData): Promise<FormState> {

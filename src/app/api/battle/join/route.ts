@@ -1,8 +1,19 @@
 import { NextResponse } from "next/server";
+import { getCurrentUser, signBattleToken } from "@/lib/auth";
 import { repo } from "@/lib/db";
+import { getClientIp, hit } from "@/lib/rate-limit";
 
 export async function POST(req: Request) {
   try {
+    const clientIp = await getClientIp();
+    const rl = hit(`battle-join:${clientIp}`, 25, 60 * 1000);
+    if (!rl.ok) {
+      return NextResponse.json(
+        { error: "Too many room join attempts. Please slow down and try again shortly." },
+        { status: 429 },
+      );
+    }
+
     const { code, display_name } = (await req.json()) as {
       code: string;
       display_name: string;
@@ -12,6 +23,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Room code and display name are required" }, { status: 400 });
     }
 
+    const user = await getCurrentUser();
     const room = await repo.getBattleRoomByCode(code.toUpperCase());
     if (!room) {
       return NextResponse.json({ error: "Room not found. Check the code and try again." }, { status: 404 });
@@ -36,7 +48,7 @@ export async function POST(req: Request) {
 
     const participant = await repo.addBattleParticipant({
       room_id: room.id,
-      user_id: null, // guest
+      user_id: user?.id || null,
       display_name: display_name.trim(),
       is_host: false,
       answers: {},
@@ -47,15 +59,24 @@ export async function POST(req: Request) {
       finished_at: null,
     });
 
-    return NextResponse.json({
+    const token = signBattleToken(room.id, participant.id);
+    const res = NextResponse.json({
       roomId: room.id,
       participantId: participant.id,
       exam: room.exam,
       subjects: room.subjects,
       status: room.status,
     });
+    res.cookies.set(`battle_token_${room.id}`, token, {
+      httpOnly: true,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 6,
+    });
+    return res;
   } catch (e) {
     console.error("Battle join error:", e);
     return NextResponse.json({ error: "Failed to join room" }, { status: 500 });
   }
 }
+

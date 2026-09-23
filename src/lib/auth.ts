@@ -3,7 +3,7 @@ import { cookies, headers } from "next/headers";
 import crypto from "node:crypto";
 import bcrypt from "bcryptjs";
 import { repo, usingSupabase } from "@/lib/db";
-import { hit, reset } from "@/lib/rate-limit";
+import { hit, reset, getClientIp } from "@/lib/rate-limit";
 import type { Profile } from "@/lib/types";
 
 const COOKIE = "prepai_session";
@@ -61,16 +61,22 @@ async function getGuestProfile(): Promise<Profile> {
   return guestProfilePromise;
 }
 
+let _ephemeralSecret: string | null = null;
 function secret() {
   if (process.env.AUTH_SECRET) return process.env.AUTH_SECRET;
   if (process.env.NODE_ENV !== "production") return "prepai-dev-secret-change-me";
   // In production without AUTH_SECRET, use a deterministic key derived from
-  // SUPABASE_SERVICE_ROLE_KEY or a stable project fallback so sessions are
-  // shared consistently across all serverless lambda instances.
+  // SUPABASE_SERVICE_ROLE_KEY so sessions are shared across serverless instances.
   if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return crypto.createHash("sha256").update(process.env.SUPABASE_SERVICE_ROLE_KEY).digest("hex");
   }
-  return "prepai-prod-fallback-secret-key-123456";
+  if (!_ephemeralSecret) {
+    console.error(
+      "CRITICAL SECURITY WARNING: AUTH_SECRET is not set in production! Generating an ephemeral secret key. Set AUTH_SECRET to prevent session invalidation.",
+    );
+    _ephemeralSecret = crypto.randomBytes(32).toString("hex");
+  }
+  return _ephemeralSecret;
 }
 
 function sign(payload: string) {
@@ -99,21 +105,39 @@ function decode(token: string | undefined): string | null {
   }
 }
 
+/** Signs a battle participant token bound to the specific room */
+export function signBattleToken(roomId: string, participantId: string): string {
+  const payload = `${roomId}:${participantId}`;
+  const sig = crypto.createHmac("sha256", secret()).update(payload).digest("base64url");
+  return `${participantId}.${sig}`;
+}
+
+/** Verifies that a battle participant token is genuine for the room and participant */
+export function verifyBattleToken(roomId: string, participantId: string, token: string | undefined): boolean {
+  if (!token) return false;
+  const [tokenPid, sig] = token.split(".");
+  if (!tokenPid || !sig || tokenPid !== participantId) return false;
+  const expectedSig = crypto
+    .createHmac("sha256", secret())
+    .update(`${roomId}:${participantId}`)
+    .digest("base64url");
+  const a = Buffer.from(sig);
+  const b = Buffer.from(expectedSig);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
 export async function setSessionCookie(userId: string) {
   const jar = await cookies();
   const h = await headers();
-  // Over HTTPS we must use SameSite=None so the cookie survives being loaded
-  // inside an iframe (workspace previews, embedded demos). SameSite=None is
-  // only legal together with Secure, so plain-HTTP localhost stays on Lax.
+  // Over HTTPS we default to SameSite=Lax for robust CSRF defense.
+  // ALLOW_IFRAME_EMBED=true allows SameSite=None + Partitioned if the app is embedded in an external iframe preview.
   const isHttps = (h.get("x-forwarded-proto") ?? "http").split(",")[0].trim() === "https";
+  const allowIframe = process.env.ALLOW_IFRAME_EMBED === "true";
   jar.set(COOKIE, encode(userId), {
     httpOnly: true,
-    sameSite: isHttps ? "none" : "lax",
+    sameSite: allowIframe && isHttps ? "none" : "lax",
     secure: isHttps,
-    // Chrome blocks third-party cookies, which breaks sign-in when the app is
-    // embedded in an iframe (workspace previews, docs demos). CHIPS lets the
-    // cookie be stored partitioned against the embedding site instead.
-    ...(isHttps ? { partitioned: true } : {}),
+    ...(allowIframe && isHttps ? { partitioned: true } : {}),
     path: "/",
     maxAge: MAX_AGE,
   });
@@ -184,8 +208,17 @@ export async function signUp(input: {
 }): Promise<AuthResult> {
   const email = input.email.trim().toLowerCase();
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return { ok: false, error: "Enter a valid email address." };
-  if (input.password.length < 6) return { ok: false, error: "Password must be at least 6 characters." };
+  if (input.password.length < 8) return { ok: false, error: "Password must be at least 8 characters long." };
   if (!input.full_name.trim()) return { ok: false, error: "Please enter your full name." };
+
+  const clientIp = await getClientIp();
+  const rl = hit(`signup:${clientIp}`, 10, 60 * 60 * 1000);
+  if (!rl.ok) {
+    return {
+      ok: false,
+      error: `Too many registration attempts. Please try again in ${Math.ceil(rl.retryAfterSeconds / 60)} minutes.`,
+    };
+  }
 
   if (usingSupabase) {
     const { admin, T } = await import("@/lib/db/supabase");
@@ -255,6 +288,16 @@ export async function signUp(input: {
 
 export async function signIn(email: string, password: string): Promise<AuthResult> {
   const mail = email.trim().toLowerCase();
+  const clientIp = await getClientIp();
+
+  // IP-level credential stuffing protection: max 40 attempts per IP per 15 minutes
+  const ipRl = hit(`login-ip:${clientIp}`, 40, 15 * 60 * 1000);
+  if (!ipRl.ok) {
+    return {
+      ok: false,
+      error: `Too many login attempts from this network. Please try again in ${Math.ceil(ipRl.retryAfterSeconds / 60)} minutes.`,
+    };
+  }
 
   // Brute-force brake: 8 failed attempts per email per 15 minutes. The check
   // runs before any password verification so locked accounts cannot be probed.
@@ -262,7 +305,7 @@ export async function signIn(email: string, password: string): Promise<AuthResul
   if (!rl.ok) {
     return {
       ok: false,
-      error: `Too many failed attempts. Please try again in ${Math.ceil(rl.retryAfterSeconds / 60)} minute${
+      error: `Too many failed attempts for this account. Please try again in ${Math.ceil(rl.retryAfterSeconds / 60)} minute${
         Math.ceil(rl.retryAfterSeconds / 60) === 1 ? "" : "s"
       }.`,
     };

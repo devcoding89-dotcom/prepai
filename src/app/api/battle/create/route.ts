@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, signBattleToken } from "@/lib/auth";
 import { repo } from "@/lib/db";
 import type { Exam } from "@/lib/types";
 
@@ -75,12 +75,20 @@ export async function POST(req: Request) {
       finished_at: null,
     });
 
-    return NextResponse.json({
+    const token = signBattleToken(room.id, participant.id);
+    const res = NextResponse.json({
       roomId: room.id,
       code: room.code,
       participantId: participant.id,
       hostName: effectiveHostName,
     });
+    res.cookies.set(`battle_token_${room.id}`, token, {
+      httpOnly: true,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 6,
+    });
+    return res;
   } catch (e) {
     console.error("Battle create error:", e);
     return NextResponse.json({ error: "Failed to create battle room" }, { status: 500 });
